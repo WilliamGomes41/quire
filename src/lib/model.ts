@@ -1,4 +1,4 @@
-/** Pinned xAI model for Keep understanding. Schema lives in understanding.ts. */
+/** Pinned xAI model. Keep understanding and optional take after Select. */
 
 export const grokModel = process.env.XAI_MODEL ?? "grok-4.6";
 

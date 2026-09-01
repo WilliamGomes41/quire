@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       { rel: "stylesheet", href: appCss },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500;8..60,600&display=swap",
       },
     ],
   }),

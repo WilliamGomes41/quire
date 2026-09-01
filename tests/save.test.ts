@@ -36,6 +36,14 @@ function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
 
 const quietSearch = async () => [];
 
+describe("Keep is not bind", () => {
+  it("does not call bind or read from the Keep path", async () => {
+    const { readFileSync } = await import("node:fs");
+    const save = readFileSync("src/lib/save.ts", "utf8");
+    expect(save).not.toMatch(/createIssue|composeIssue|runGrokTake|fetchArticleWords/);
+  });
+});
+
 describe("Keep always saves", () => {
   afterEach(() => {
     resetMemoryDb();
