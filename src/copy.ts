@@ -19,3 +19,8 @@ export const keepHint = "One owner. Your pile stays yours.";
 export const keptNote = "Kept.";
 
 export const keepNeedsUrl = "A URL is needed to keep.";
+
+export const needSignIn = "Owner sign in is required to keep.";
+
+export const signInFirst =
+  "Sign in to keep a URL. The pile stays with the owner.";

@@ -12,6 +12,8 @@ For people who like to keep articles for calm later reading. Paste a URL. It sta
 
 Keep always saves. A clip is written first. Grok, search, and other enrichment may fail; the keep does not.
 
+Local clips persist in `.pglite` when `DATABASE_URL` is unset. Owner sign-in is required to keep or list. The pile stays with the owner.
+
 Canonical law lives in [quire-bind PROTOCOL.md](https://github.com/WilliamGomes41/quire-bind/blob/main/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
 
 ## Stack

@@ -73,7 +73,7 @@ describe("Keep always saves", () => {
   });
 
   it("persists through PGLite when enrichment fails", async () => {
-    const store = await clipStore();
+    const store = await clipStore("test-owner");
     const clip = await saveClip({ url: "https://example.com/pglite" }, store, {
       grok: async () => {
         throw new Error("grok failed");
