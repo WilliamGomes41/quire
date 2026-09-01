@@ -19,3 +19,5 @@ export const keepHint = "One owner. Your pile stays yours.";
 export const keptNote = "Kept.";
 
 export const keepNeedsUrl = "A URL is needed to keep.";
+
+export const couldNotUnderstand = "Could not understand this keep.";

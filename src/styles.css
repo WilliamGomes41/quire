@@ -75,6 +75,11 @@ ul {
   font-size: 0.95rem;
 }
 
+.fail {
+  font-size: 0.95rem;
+  color: color-mix(in srgb, var(--ink) 78%, var(--paper));
+}
+
 nav {
   display: flex;
   justify-content: space-between;
