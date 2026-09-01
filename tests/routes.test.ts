@@ -9,11 +9,32 @@ function walk(dir: string): string[] {
   });
 }
 
-describe("PR 1 surface", () => {
+describe("PR 2 surface", () => {
   it("does not ship a user-facing Press route or nav", () => {
     const files = walk("src/routes");
     const text = files.map((file) => readFileSync(file, "utf8")).join("\n");
     expect(text.includes("Press")).toBe(false);
     expect(text.includes("/press")).toBe(false);
+  });
+
+  it("does not bind Keep to an owner session", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const save = readFileSync("src/lib/save.ts", "utf8");
+    expect(keep).not.toMatch(/getSession|requireOwner|auth\.api/);
+    expect(save).not.toMatch(/ownerId|userId/);
+  });
+
+  it("wires one Grok understanding on Keep", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/runGrokUnderstanding/);
+    expect(keep).toMatch(/understand:/);
+  });
+
+  it("does not map understanding to a class tree", () => {
+    const text = ["src/lib/understanding.ts", "src/lib/save.ts"]
+      .map((file) => readFileSync(file, "utf8"))
+      .join("\n");
+    expect(text).not.toMatch(/class Understanding/);
+    expect(text).not.toMatch(/class KeepUnderstanding/);
   });
 });

@@ -1,4 +1,4 @@
-/** Skeleton pin only. Understanding schema is a later slice. */
+/** Pinned xAI model for Keep understanding. Schema lives in understanding.ts. */
 
 export const grokModel = process.env.XAI_MODEL ?? "grok-4.6";
 

@@ -7,12 +7,17 @@ export type Queryable = {
   ) => Promise<{ rows: Record<string, unknown>[] }>;
 };
 
-const schema = `
+const createClips = `
 create table if not exists clips (
   id text primary key,
   url text not null,
-  saved_at timestamptz not null
+  saved_at timestamptz not null,
+  understanding jsonb
 );
+`;
+
+const addUnderstanding = `
+alter table clips add column if not exists understanding jsonb;
 `;
 
 let memory: PGlite | null = null;
@@ -31,13 +36,14 @@ export async function openDb(): Promise<Queryable> {
         return { rows };
       },
     };
-    await queryable.query(schema);
+    await queryable.query(createClips);
+    await queryable.query(addUnderstanding);
     return queryable;
   }
 
   if (!memory) {
     memory = new PGlite();
-    await memory.exec(schema);
+    await memory.exec(`${createClips}${addUnderstanding}`);
   }
   return {
     async query(text, params = []) {

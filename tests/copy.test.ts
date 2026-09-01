@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dek, emptyState, headline, kicker } from "../src/copy";
+import { couldNotUnderstand, dek, emptyState, headline, kicker } from "../src/copy";
 
 describe("product voice", () => {
   it("stays in William's personal-press register", () => {
@@ -8,9 +8,10 @@ describe("product voice", () => {
     expect(dek).toMatch(/one reader/i);
     expect(dek).toMatch(/Not a patch on quire-bind/);
     expect(emptyState).toMatch(/Paste a URL/);
+    expect(couldNotUnderstand).toMatch(/Could not understand/);
   });
 
   it("does not invent a Press product surface", () => {
-    expect(`${kicker} ${headline} ${emptyState}`).not.toMatch(/\bPress\b/);
+    expect(`${kicker} ${headline} ${emptyState} ${couldNotUnderstand}`).not.toMatch(/\bPress\b/);
   });
 });
