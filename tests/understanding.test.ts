@@ -74,7 +74,8 @@ describe("Grok does not search", () => {
     expect(request.model).toBe(grokModel);
     expect(request).not.toHaveProperty("tools");
     expect(request).not.toHaveProperty("search_parameters");
-    expect(body).not.toMatch(/web_search/);
+    expect(Object.keys(request)).toEqual(["model", "messages", "response_format"]);
+    expect(body).toMatch(/must not call web_search/);
     expect(request.response_format.json_schema.strict).toBe(true);
     expect(request.response_format.json_schema.schema).toEqual(understandingJsonSchema);
     expect(understandingSystemPrompt).toMatch(/only structure the topic/i);
@@ -122,6 +123,7 @@ describe("Grok does not search", () => {
       entities: ["WHO"],
     });
     expect(posted).toEqual(buildUnderstandingRequest({ url: "https://example.com/study" }));
-    expect(JSON.stringify(posted)).not.toMatch(/web_search/);
+    expect(posted).not.toHaveProperty("tools");
+    expect(posted).not.toHaveProperty("search_parameters");
   });
 });
