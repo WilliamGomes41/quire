@@ -21,3 +21,24 @@ export const keptNote = "Kept.";
 export const keepNeedsUrl = "A URL is needed to keep.";
 
 export const couldNotUnderstand = "Could not understand this keep.";
+
+export const moreOnThisTopic = "More on this topic";
+
+export const nothingMoreOnTopic = "We looked and found nothing more on this topic.";
+
+export const couldNotLook = "Could not look for more on this topic.";
+
+export const suggestionsUntilSelected = "Suggestions until you select them.";
+
+export function moreOnThisTopicCopy(input: {
+  status: "ok" | "failed" | "unconfigured" | "timeout";
+  count: number;
+}) {
+  if (input.status !== "ok") {
+    return { kind: "fail" as const, text: couldNotLook };
+  }
+  if (input.count === 0) {
+    return { kind: "empty" as const, text: nothingMoreOnTopic };
+  }
+  return { kind: "suggestions" as const, text: moreOnThisTopic };
+}

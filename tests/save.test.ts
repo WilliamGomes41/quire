@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { resetMemoryDb } from "../src/lib/db";
+import { relatedPersist, type RelatedRailRecord } from "../src/lib/related";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
 import { clipStore } from "../src/lib/store";
 import type { Understanding, UnderstandingRecord } from "../src/lib/understanding";
@@ -20,13 +21,27 @@ function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
       if (!clip) throw new Error("missing clip");
       rows.set(id, { ...clip, understanding: record });
     },
+    async persistRelated(id, record) {
+      const clip = rows.get(id);
+      if (!clip) throw new Error("missing clip");
+      const write = relatedPersist(record);
+      rows.set(id, {
+        ...clip,
+        relatedRail: write.related_rail,
+        ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
+      });
+    },
   };
 }
+
+const quietSearch = async () => [];
 
 describe("Keep always saves", () => {
   afterEach(() => {
     resetMemoryDb();
     delete process.env.XAI_API_KEY;
+    delete process.env.SEARCH_API_KEY;
+    delete process.env.BRAVE_SEARCH_API_KEY;
   });
 
   it("persists the clip when understanding throws", async () => {
@@ -35,6 +50,7 @@ describe("Keep always saves", () => {
       understand: async () => {
         throw new Error("model down");
       },
+      searchPages: quietSearch,
     });
 
     expect(clip.url).toBe("https://example.com/kept");
@@ -47,6 +63,7 @@ describe("Keep always saves", () => {
       understand: async () => {
         throw new Error("model down");
       },
+      searchPages: quietSearch,
     });
 
     const stored = await store.get(clip.id);
@@ -68,6 +85,7 @@ describe("Keep always saves", () => {
         sawRow = store.rows.size === 1;
         throw new Error("after persist");
       },
+      searchPages: quietSearch,
     });
     expect(sawRow).toBe(true);
   });
@@ -82,6 +100,7 @@ describe("Keep always saves", () => {
     };
     const clip = await saveClip({ url: "https://example.com/ok" }, store, {
       understand: async () => understood,
+      searchPages: quietSearch,
     });
     const stored = await store.get(clip.id);
     expect(stored?.understanding).toEqual({ status: "ok", ...understood });
@@ -93,6 +112,7 @@ describe("Keep always saves", () => {
       understand: async () => {
         throw new Error("grok failed");
       },
+      searchPages: quietSearch,
     });
     const stored = await store.get(clip.id);
     expect(stored?.url).toBe("https://example.com/pglite");
@@ -104,7 +124,9 @@ describe("Keep always saves", () => {
 
   it("still keeps when default Grok understanding cannot run", async () => {
     const store = await clipStore();
-    const clip = await saveClip({ url: "https://example.com/no-key" }, store);
+    const clip = await saveClip({ url: "https://example.com/no-key" }, store, {
+      searchPages: quietSearch,
+    });
     const stored = await store.get(clip.id);
     expect(stored?.url).toBe("https://example.com/no-key");
     expect(stored?.understanding).toMatchObject({
@@ -122,6 +144,7 @@ describe("Keep always saves", () => {
       understand: async () => {
         throw new Error("model down");
       },
+      searchPages: quietSearch,
     });
     expect(store.rows.has(clip.id)).toBe(true);
     expect(clip.understanding).toMatchObject({
@@ -145,6 +168,7 @@ describe("understanding fail is not an empty catch", () => {
       understand: async () => {
         throw new Error("could not understand");
       },
+      searchPages: quietSearch,
     });
 
     expect(records).toHaveLength(1);
@@ -153,5 +177,125 @@ describe("understanding fail is not an empty catch", () => {
       message: "could not understand",
     });
     expect(store.rows.values().next().value?.understanding).toEqual(records[0]);
+  });
+});
+
+describe("Keep still persists when search throws", () => {
+  it("writes the clip and a rail fail, not related_reporting", async () => {
+    const store = memoryStore();
+    const clip = await saveClip({ url: "https://example.com/search-throws" }, store, {
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => {
+        throw new Error("search down");
+      },
+    });
+
+    expect(store.rows.get(clip.id)?.url).toBe("https://example.com/search-throws");
+    expect(clip.url).toBe("https://example.com/search-throws");
+    const stored = await store.get(clip.id);
+    expect(stored?.relatedRail).toMatchObject({
+      status: "failed",
+      message: "search down",
+    });
+    expect(stored?.relatedReporting).toBeNull();
+    expect(stored).not.toMatchObject({ relatedReporting: expect.any(Array) });
+  });
+
+  it("does not write related_reporting on PGLite when search throws", async () => {
+    const store = await clipStore();
+    const clip = await saveClip({ url: "https://example.com/pglite-search" }, store, {
+      understand: async () => ({
+        contentType: "Comment",
+        topic: "A column on reading",
+        entities: [],
+      }),
+      searchPages: async () => {
+        throw new Error("search down");
+      },
+    });
+    const stored = await store.get(clip.id);
+    expect(stored?.url).toBe("https://example.com/pglite-search");
+    expect(stored?.relatedRail?.status).toBe("failed");
+    expect(stored?.relatedReporting).toBeNull();
+  });
+
+  it("still keeps when persist of the rail fail throws", async () => {
+    const store = memoryStore();
+    store.persistRelated = async () => {
+      throw new Error("rail write failed");
+    };
+    const clip = await saveClip({ url: "https://example.com/rail-write" }, store, {
+      understand: async () => ({
+        contentType: "Study",
+        topic: "A paper",
+        entities: [],
+      }),
+      searchPages: async () => {
+        throw new Error("search down");
+      },
+    });
+    expect(store.rows.has(clip.id)).toBe(true);
+    expect(clip.relatedRail).toMatchObject({
+      status: "failed",
+      message: "search down",
+    });
+  });
+});
+
+describe("successful retrieval writes related_reporting", () => {
+  it("persists ok pages and ok+0 distinctly from fail", async () => {
+    const store = memoryStore();
+    const withPages = await saveClip({ url: "https://example.com/with-pages" }, store, {
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => [
+        { url: "https://news.example/one", title: "Harbour vote in Praia" },
+        { url: "https://news.example/two", title: "Harbour vote follow-up" },
+      ],
+    });
+    expect(withPages.relatedRail).toEqual({ status: "ok" });
+    expect(withPages.relatedReporting).toHaveLength(2);
+
+    const empty = await saveClip({ url: "https://example.com/empty-topic" }, store, {
+      understand: async () => ({
+        contentType: "Notice",
+        topic: "A harbour closure",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    expect(empty.relatedRail).toEqual({ status: "ok" });
+    expect(empty.relatedReporting).toEqual([]);
+
+    const rails: RelatedRailRecord[] = [];
+    store.persistRelated = async (id, record) => {
+      rails.push(record);
+      const clip = store.rows.get(id);
+      if (!clip) return;
+      const write = relatedPersist(record);
+      store.rows.set(id, {
+        ...clip,
+        relatedRail: write.related_rail,
+        ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
+      });
+    };
+    await saveClip({ url: "https://example.com/fail-write" }, store, {
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: [],
+      }),
+      searchPages: async () => {
+        throw Object.assign(new Error("provider down"), { status: "failed" });
+      },
+    });
+    expect(rails[0]).not.toHaveProperty("related_reporting");
   });
 });

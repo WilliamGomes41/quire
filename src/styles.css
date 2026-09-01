@@ -86,3 +86,16 @@ nav {
   align-items: baseline;
   margin-bottom: 2rem;
 }
+
+.rail {
+  margin-top: 0.75rem;
+}
+
+.rail h2 {
+  font-size: 1.05rem;
+  margin: 0 0 0.35rem;
+}
+
+.rail ul {
+  margin: 0.35rem 0 0;
+}
