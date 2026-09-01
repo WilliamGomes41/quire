@@ -8,10 +8,15 @@ import {
   keepHint,
   keptNote,
   kicker,
+  moreOnThisTopic,
+  moreOnThisTopicCopy,
+  nothingMoreOnTopic,
   productName,
+  suggestionsUntilSelected,
 } from "../copy";
 import { saveClip, type Clip } from "../lib/save";
 import { clipStore, listClips } from "../lib/store";
+import { resolveSearchPages } from "../lib/search";
 import { runGrokUnderstanding } from "../lib/understanding";
 
 const loadClips = createServerFn({ method: "GET" }).handler(async () => {
@@ -24,6 +29,7 @@ const keepUrl = createServerFn({ method: "POST" })
     const store = await clipStore();
     const clip = await saveClip({ url: data.url }, store, {
       understand: (kept) => runGrokUnderstanding({ url: kept.url }),
+      searchPages: resolveSearchPages(),
     });
     return { note: keptNote, clip };
   });
@@ -72,6 +78,7 @@ function Home() {
             <li key={clip.id}>
               <a href={clip.url}>{clip.url}</a>
               <UnderstandingNote clip={clip} />
+              <RelatedNote clip={clip} />
             </li>
           ))}
         </ul>
@@ -96,5 +103,47 @@ function UnderstandingNote({ clip }: { clip: Clip }) {
       {record.entities.length > 0 ? ` — ${record.entities.join(", ")}` : ""}
       {record.date ? ` (${record.date})` : ""}
     </p>
+  );
+}
+
+function RelatedNote({ clip }: { clip: Clip }) {
+  const rail = clip.relatedRail;
+  if (!rail) return null;
+
+  if (rail.status !== "ok") {
+    const copy = moreOnThisTopicCopy({ status: rail.status, count: 0 });
+    return (
+      <section className="rail">
+        <h2>{moreOnThisTopic}</h2>
+        <p className="fail">
+          {copy.text} {rail.message}
+        </p>
+      </section>
+    );
+  }
+
+  const pages = clip.relatedReporting ?? [];
+  const copy = moreOnThisTopicCopy({ status: "ok", count: pages.length });
+  if (copy.kind === "empty") {
+    return (
+      <section className="rail">
+        <h2>{moreOnThisTopic}</h2>
+        <p className="empty">{nothingMoreOnTopic}</p>
+      </section>
+    );
+  }
+
+  return (
+    <section className="rail">
+      <h2>{moreOnThisTopic}</h2>
+      <p className="note">{suggestionsUntilSelected}</p>
+      <ul>
+        {pages.map((page) => (
+          <li key={page.url}>
+            <a href={page.url}>{page.title || page.url}</a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

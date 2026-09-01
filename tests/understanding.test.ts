@@ -127,3 +127,13 @@ describe("Grok does not search", () => {
     expect(posted).not.toHaveProperty("search_parameters");
   });
 });
+
+describe("Grok request still has no search after the rail", () => {
+  it("does not add tools, web_search, or search_parameters to the Keep understanding request", () => {
+    const request = buildUnderstandingRequest({ url: "https://example.com/kept" });
+    expect(request).not.toHaveProperty("tools");
+    expect(request).not.toHaveProperty("search_parameters");
+    expect(request).not.toHaveProperty("web_search");
+    expect(Object.keys(request)).toEqual(["model", "messages", "response_format"]);
+  });
+});
