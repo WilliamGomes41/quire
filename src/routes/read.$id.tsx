@@ -53,7 +53,6 @@ function ReadIssue() {
           </aside>
         ) : null}
         <article className="lead-copy">
-          <h2>{page.lead.headline}</h2>
           {page.lead.paragraphs.map((paragraph) => (
             <p key={paragraph.slice(0, 48)}>{paragraph}</p>
           ))}
