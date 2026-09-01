@@ -1,13 +1,19 @@
 import { describe, expect, it } from "vitest";
 import {
+  boundEmpty,
+  couldNotFetchWords,
   couldNotLook,
   couldNotUnderstand,
+  createIssueLabel,
   dek,
   emptyState,
   headline,
   kicker,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
+  originalInByDefault,
+  readLine,
+  takeLabel,
 } from "../src/copy";
 
 describe("product voice", () => {
@@ -18,12 +24,30 @@ describe("product voice", () => {
     expect(dek).toMatch(/Not a patch on quire-bind/);
     expect(emptyState).toMatch(/Paste a URL/);
     expect(couldNotUnderstand).toMatch(/Could not understand/);
+    expect(createIssueLabel).toBe("Create issue");
+    expect(readLine).toMatch(/bound issue/i);
+    expect(originalInByDefault).toMatch(/unless you take it out/);
+    expect(takeLabel).toBe("Take");
+    expect(takeLabel).not.toMatch(/TL;DR|tl;dr/);
+    expect(boundEmpty).toMatch(/Create the issue/);
   });
 
-  it("does not invent a Press product surface", () => {
-    expect(`${kicker} ${headline} ${emptyState} ${couldNotUnderstand} ${nothingMoreOnTopic} ${couldNotLook}`).not.toMatch(
-      /\bPress\b/,
-    );
+  it("does not invent a Press product surface or a TL;DR kicker", () => {
+    const surface = [
+      kicker,
+      headline,
+      emptyState,
+      couldNotUnderstand,
+      nothingMoreOnTopic,
+      couldNotLook,
+      createIssueLabel,
+      readLine,
+      takeLabel,
+      boundEmpty,
+      couldNotFetchWords,
+    ].join(" ");
+    expect(surface).not.toMatch(/\bPress\b/);
+    expect(surface).not.toMatch(/TL;DR|tl;dr/);
   });
 
   it("keeps empty-topic copy off the system-fail sentence", () => {

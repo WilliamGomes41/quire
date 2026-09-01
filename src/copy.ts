@@ -30,6 +30,26 @@ export const couldNotLook = "Could not look for more on this topic.";
 
 export const suggestionsUntilSelected = "Suggestions until you select them.";
 
+export const selectLine = "Choose what belongs in the issue.";
+
+export const originalInByDefault = "The kept piece is in unless you take it out.";
+
+export const relatedJoinWhenSelected = "Related reporting joins only when you select it.";
+
+export const createIssueLabel = "Create issue";
+
+export const readLine = "Read the bound issue.";
+
+export const takeLabel = "Take";
+
+export const boundNote = "Bound.";
+
+export const boundEmpty = "No issue bound yet. Keep a piece. Choose. Create the issue.";
+
+export const nothingSelected = "Select something to bind. An issue is what you choose.";
+
+export const couldNotFetchWords = "Could not fetch the author's words.";
+
 export function moreOnThisTopicCopy(input: {
   status: "ok" | "failed" | "unconfigured" | "timeout";
   count: number;

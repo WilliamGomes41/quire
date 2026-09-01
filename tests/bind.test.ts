@@ -1,0 +1,221 @@
+import { afterEach, describe, expect, it } from "vitest";
+import { composeIssue } from "../src/lib/compose";
+import { createIssue, type BoundIssue, type IssueStore } from "../src/lib/bind";
+import { resetMemoryDb } from "../src/lib/db";
+import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
+import { relatedPersist } from "../src/lib/related";
+import { clipStore, issueStore } from "../src/lib/store";
+import type { ArticleWords } from "../src/lib/article";
+
+function memoryClips(): ClipStore & { rows: Map<string, Clip> } {
+  const rows = new Map<string, Clip>();
+  return {
+    rows,
+    async insert(clip) {
+      rows.set(clip.id, clip);
+      return clip;
+    },
+    async get(id) {
+      return rows.get(id) ?? null;
+    },
+    async persistUnderstanding(id, record) {
+      const clip = rows.get(id);
+      if (!clip) throw new Error("missing clip");
+      rows.set(id, { ...clip, understanding: record });
+    },
+    async persistRelated(id, record) {
+      const clip = rows.get(id);
+      if (!clip) throw new Error("missing clip");
+      const write = relatedPersist(record);
+      rows.set(id, {
+        ...clip,
+        relatedRail: write.related_rail,
+        ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
+      });
+    },
+  };
+}
+
+function memoryIssues(): IssueStore & { rows: Map<string, BoundIssue> } {
+  const rows = new Map<string, BoundIssue>();
+  return {
+    rows,
+    async insert(issue) {
+      rows.set(issue.id, issue);
+      return issue;
+    },
+    async get(id) {
+      return rows.get(id) ?? null;
+    },
+  };
+}
+
+const originalWords: ArticleWords = {
+  url: "https://example.com/kept",
+  headline: "The harbour vote",
+  paragraphs: [
+    "The assembly met at dusk in Praia.",
+    "The motion carried after a quiet count.",
+  ],
+};
+
+const relatedWords: ArticleWords = {
+  url: "https://news.example/one",
+  headline: "A second dispatch",
+  paragraphs: ["Another reporter stood on the quay."],
+};
+
+function fetchMap(map: Record<string, ArticleWords>) {
+  return async (url: string) => {
+    const words = map[url];
+    if (!words) throw new Error(`no words for ${url}`);
+    return words;
+  };
+}
+
+describe("create issue binds a visible magazine page", () => {
+  afterEach(() => {
+    resetMemoryDb();
+    delete process.env.XAI_API_KEY;
+  });
+
+  it("includes the original by default and keeps related out until selected", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => [
+        { url: "https://news.example/one", title: "Harbour vote in Praia" },
+        { url: "https://news.example/two", title: "Harbour vote follow-up" },
+      ],
+    });
+
+    const issues = memoryIssues();
+    const bound = await createIssue({ clip }, issues, {
+      fetchWords: fetchMap({
+        "https://example.com/kept": originalWords,
+        "https://news.example/one": relatedWords,
+      }),
+      writeTake: async () => {
+        throw new Error("no take");
+      },
+    });
+
+    expect(bound.pieces.map((piece) => piece.url)).toEqual(["https://example.com/kept"]);
+    expect(bound.pieces[0]?.role).toBe("original");
+    expect(bound.pieces[0]?.paragraphs).toEqual(originalWords.paragraphs);
+
+    const withRelated = await createIssue(
+      { clip, choice: { includeOriginal: true, relatedUrls: ["https://news.example/one"] } },
+      issues,
+      {
+        fetchWords: fetchMap({
+          "https://example.com/kept": originalWords,
+          "https://news.example/one": relatedWords,
+        }),
+        writeTake: async () => "A quiet count in Praia.",
+      },
+    );
+    expect(withRelated.pieces.map((piece) => piece.url)).toEqual([
+      "https://example.com/kept",
+      "https://news.example/one",
+    ]);
+    expect(withRelated.pieces.filter((piece) => piece.url === "https://news.example/one")).toHaveLength(1);
+  });
+
+  it("puts the author's original words on Read, not the Keep understanding", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => [],
+    });
+    const issue = await createIssue({ clip }, memoryIssues(), {
+      fetchWords: async () => originalWords,
+      writeTake: async () => "A take beside the piece.",
+    });
+    const page = composeIssue(issue);
+    expect(page.lead.paragraphs).toEqual(originalWords.paragraphs);
+    expect(page.lead.headline).toBe("The harbour vote");
+    expect(page.lead.paragraphs.join(" ")).toMatch(/assembly met at dusk/);
+    expect(page.lead.paragraphs.join(" ")).not.toBe("A harbour vote");
+    expect(clip.understanding && clip.understanding.status === "ok" ? clip.understanding.topic : "").toBe(
+      "A harbour vote",
+    );
+  });
+
+  it("stays a valid page when the take is missing or failed", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      understand: async () => ({
+        contentType: "Notice",
+        topic: "A harbour closure",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    const issue = await createIssue({ clip }, memoryIssues(), {
+      fetchWords: async () => originalWords,
+      writeTake: async () => {
+        throw new Error("take down");
+      },
+    });
+    expect(issue.take).toMatchObject({ status: "failed", message: "take down" });
+    const page = composeIssue(issue);
+    expect(page.take).toBeUndefined();
+    expect(page.lead.paragraphs.length).toBeGreaterThan(0);
+    expect(page.intent.take_slot).toBe("none");
+  });
+
+  it("keeps the clip when bind cannot fetch the author's words", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: async () => {
+        throw new Error("search down");
+      },
+    });
+    await expect(
+      createIssue({ clip }, memoryIssues(), {
+        fetchWords: async () => {
+          throw new Error("fetch down");
+        },
+      }),
+    ).rejects.toThrow(/author's words/);
+    expect(clips.rows.get(clip.id)?.url).toBe("https://example.com/kept");
+  });
+
+  it("locks original words through PGLite and still keeps when take fails", async () => {
+    const clips = await clipStore();
+    const clip = await saveClip({ url: "https://example.com/pglite-bind" }, clips, {
+      understand: async () => ({
+        contentType: "Comment",
+        topic: "A column on reading",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    const issue = await createIssue({ clip }, await issueStore(), {
+      fetchWords: async () => ({
+        ...originalWords,
+        url: clip.url,
+      }),
+      writeTake: async () => {
+        throw new Error("take down");
+      },
+    });
+    const stored = await (await issueStore()).get(issue.id);
+    expect(stored?.pieces[0]?.paragraphs).toEqual(originalWords.paragraphs);
+    expect(stored?.take).toMatchObject({ status: "failed" });
+    const kept = await clips.get(clip.id);
+    expect(kept?.url).toBe("https://example.com/pglite-bind");
+  });
+});

@@ -1,7 +1,11 @@
 import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
+import { useState } from "react";
 import {
+  boundEmpty,
+  boundNote,
   couldNotUnderstand,
+  createIssueLabel,
   dek,
   emptyState,
   headline,
@@ -11,16 +15,23 @@ import {
   moreOnThisTopic,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
+  originalInByDefault,
   productName,
+  readLine,
+  relatedJoinWhenSelected,
+  selectLine,
   suggestionsUntilSelected,
 } from "../copy";
+import { createIssue } from "../lib/bind";
 import { saveClip, type Clip } from "../lib/save";
-import { clipStore, listClips } from "../lib/store";
+import { defaultBindChoice } from "../lib/select";
+import { clipStore, issueStore, listClips, listIssues } from "../lib/store";
 import { resolveSearchPages } from "../lib/search";
 import { runGrokUnderstanding } from "../lib/understanding";
 
-const loadClips = createServerFn({ method: "GET" }).handler(async () => {
-  return listClips();
+const loadHome = createServerFn({ method: "GET" }).handler(async () => {
+  const [clips, issues] = await Promise.all([listClips(), listIssues()]);
+  return { clips, issues };
 });
 
 const keepUrl = createServerFn({ method: "POST" })
@@ -34,14 +45,35 @@ const keepUrl = createServerFn({ method: "POST" })
     return { note: keptNote, clip };
   });
 
+const bindIssue = createServerFn({ method: "POST" })
+  .validator((data: { clipId: string; includeOriginal: boolean; relatedUrls: string[] }) => data)
+  .handler(async ({ data }) => {
+    const clips = await clipStore();
+    const clip = await clips.get(data.clipId);
+    if (!clip) {
+      throw new Error("Keep that piece first.");
+    }
+    const issue = await createIssue(
+      {
+        clip,
+        choice: {
+          includeOriginal: data.includeOriginal,
+          relatedUrls: data.relatedUrls,
+        },
+      },
+      await issueStore(),
+    );
+    return { note: boundNote, id: issue.id };
+  });
+
 export const Route = createFileRoute("/")({
-  loader: () => loadClips(),
+  loader: () => loadHome(),
   component: Home,
 });
 
 function Home() {
   const router = useRouter();
-  const clips = Route.useLoaderData();
+  const { clips, issues } = Route.useLoaderData();
 
   return (
     <main>
@@ -70,20 +102,113 @@ function Home() {
       </form>
       <p className="empty">{keepHint}</p>
 
-      {clips.length === 0 ? (
-        <p className="empty">{emptyState}</p>
-      ) : (
-        <ul>
-          {clips.map((clip: Clip) => (
-            <li key={clip.id}>
-              <a href={clip.url}>{clip.url}</a>
-              <UnderstandingNote clip={clip} />
-              <RelatedNote clip={clip} />
-            </li>
-          ))}
-        </ul>
-      )}
+      <section className="board">
+        <h2>{selectLine}</h2>
+        <p className="empty">{originalInByDefault}</p>
+        {clips.length === 0 ? (
+          <p className="empty">{emptyState}</p>
+        ) : (
+          <ul className="cards">
+            {clips.map((clip: Clip) => (
+              <li key={clip.id}>
+                <BindCard
+                  clip={clip}
+                  onBind={(choice) =>
+                    bindIssue({
+                      data: {
+                        clipId: clip.id,
+                        includeOriginal: choice.includeOriginal,
+                        relatedUrls: choice.relatedUrls,
+                      },
+                    }).then((result) =>
+                      router.invalidate().then(() =>
+                        router.navigate({ to: "/read/$id", params: { id: result.id } }),
+                      ),
+                    )
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section className="board">
+        <h2>{readLine}</h2>
+        {issues.length === 0 ? (
+          <p className="empty">{boundEmpty}</p>
+        ) : (
+          <ul className="covers">
+            {issues.map((issue) => (
+              <li key={issue.id}>
+                <Link className="cover" to="/read/$id" params={{ id: issue.id }}>
+                  <span className="kicker">Issue</span>
+                  <strong className="display">{issue.title}</strong>
+                  <span className="empty">{issue.pieces.length === 1 ? "One piece" : `${issue.pieces.length} pieces`}</span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
     </main>
+  );
+}
+
+function BindCard({
+  clip,
+  onBind,
+}: {
+  clip: Clip;
+  onBind: (choice: { includeOriginal: boolean; relatedUrls: string[] }) => Promise<void>;
+}) {
+  const [choice, setChoice] = useState(defaultBindChoice);
+  const [error, setError] = useState("");
+  const related = clip.relatedReporting ?? [];
+
+  return (
+    <article className="card">
+      <a href={clip.url}>{clip.url}</a>
+      <UnderstandingNote clip={clip} />
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          setError("");
+          onBind(choice).then(
+            () => undefined,
+            (cause: unknown) => {
+              setError(cause instanceof Error ? cause.message : "Could not bind this issue.");
+            },
+          );
+        }}
+      >
+        <label className="choice">
+          <input
+            type="checkbox"
+            checked={choice.includeOriginal}
+            onChange={(event) => {
+              setChoice((current) => ({ ...current, includeOriginal: event.target.checked }));
+            }}
+          />
+          Kept piece
+        </label>
+        <RelatedSelect
+          clip={clip}
+          selected={choice.relatedUrls}
+          onToggle={(url, on) => {
+            setChoice((current) => ({
+              ...current,
+              relatedUrls: on
+                ? [...current.relatedUrls, url]
+                : current.relatedUrls.filter((item) => item !== url),
+            }));
+          }}
+        />
+        {related.length === 0 ? null : <p className="note">{relatedJoinWhenSelected}</p>}
+        <button type="submit">{createIssueLabel}</button>
+      </form>
+      {error ? <p className="fail">{error}</p> : null}
+    </article>
   );
 }
 
@@ -106,7 +231,15 @@ function UnderstandingNote({ clip }: { clip: Clip }) {
   );
 }
 
-function RelatedNote({ clip }: { clip: Clip }) {
+function RelatedSelect({
+  clip,
+  selected,
+  onToggle,
+}: {
+  clip: Clip;
+  selected: string[];
+  onToggle: (url: string, on: boolean) => void;
+}) {
   const rail = clip.relatedRail;
   if (!rail) return null;
 
@@ -114,7 +247,7 @@ function RelatedNote({ clip }: { clip: Clip }) {
     const copy = moreOnThisTopicCopy({ status: rail.status, count: 0 });
     return (
       <section className="rail">
-        <h2>{moreOnThisTopic}</h2>
+        <h3>{moreOnThisTopic}</h3>
         <p className="fail">
           {copy.text} {rail.message}
         </p>
@@ -127,7 +260,7 @@ function RelatedNote({ clip }: { clip: Clip }) {
   if (copy.kind === "empty") {
     return (
       <section className="rail">
-        <h2>{moreOnThisTopic}</h2>
+        <h3>{moreOnThisTopic}</h3>
         <p className="empty">{nothingMoreOnTopic}</p>
       </section>
     );
@@ -135,12 +268,19 @@ function RelatedNote({ clip }: { clip: Clip }) {
 
   return (
     <section className="rail">
-      <h2>{moreOnThisTopic}</h2>
+      <h3>{moreOnThisTopic}</h3>
       <p className="note">{suggestionsUntilSelected}</p>
       <ul>
         {pages.map((page) => (
           <li key={page.url}>
-            <a href={page.url}>{page.title || page.url}</a>
+            <label className="choice">
+              <input
+                type="checkbox"
+                checked={selected.includes(page.url)}
+                onChange={(event) => onToggle(page.url, event.target.checked)}
+              />
+              <span>{page.title || page.url}</span>
+            </label>
           </li>
         ))}
       </ul>

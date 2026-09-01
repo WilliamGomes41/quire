@@ -14,15 +14,17 @@ Keep always saves. A clip is written first. Then one Grok understanding (content
 
 Then the More on this topic rail. Retrieval is a provider slot: one dedicated search API behind a function/config. The search API finds pages (raw). The app normalizes, dedupes, ranks, and persists at most five `related_reporting`.
 
-`ok`+0 may tell the reader we looked and found nothing more on this topic. System fail (`failed` / `unconfigured` / timeout) uses different copy. Failed retrieval does not write `related_reporting`. Search failure does not fail Keep.
+Then Select → Create issue → Read. An issue is whatever you choose to bind. The kept piece is in unless you take it out. Related reporting joins only when you select it. Suggestions stay suggestions until then.
 
-If understanding fails, Keep still stands and a readable fail is stored. Could-not-understand is not a silent omit. Empty vs fail are persisted and shown.
+Create issue fetches the author's original words and locks them. Magazine is that bound issue — a readable page, not a restyle of a URL list. Cards open that page. A take may sit beside the complete original. It is optional. It is not a TL;DR kicker. The page still reads if the take is missing.
+
+Search failure, understanding failure, a failed take, or a failed bind do not fail Keep.
 
 Canonical law lives in [quire-bind PROTOCOL.md](https://github.com/WilliamGomes41/quire-bind/blob/main/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
 
 ## Stack
 
-TanStack Start, Better Auth, PGLite (or Postgres/Neon when `DATABASE_URL` is set), xAI `grok-4.6` for Keep understanding, one dedicated search API in the retrieval slot.
+TanStack Start, Better Auth, PGLite (or Postgres/Neon when `DATABASE_URL` is set), xAI `grok-4.6` for Keep understanding and the optional take, one dedicated search API in the retrieval slot.
 
 ## Develop
 

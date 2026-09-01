@@ -1,4 +1,5 @@
 import { openDb } from "./db";
+import type { BoundIssue, BoundPiece, IssueStore } from "./bind";
 import {
   readRelatedRail,
   readRelatedReporting,
@@ -6,6 +7,7 @@ import {
   type RelatedRailRecord,
 } from "./related";
 import type { Clip, ClipStore } from "./save";
+import { readTake } from "./take";
 import { readUnderstanding, type UnderstandingRecord } from "./understanding";
 
 function clipFromRow(row: Record<string, unknown>): Clip {
@@ -62,4 +64,67 @@ export async function listClips(): Promise<Clip[]> {
     "select id, url, saved_at, understanding, related_rail, related_reporting from clips order by saved_at desc",
   );
   return rows.map(clipFromRow);
+}
+
+function readPieces(value: unknown): BoundPiece[] {
+  const parsed = typeof value === "string" ? JSON.parse(value) : value;
+  if (!Array.isArray(parsed)) return [];
+  return parsed.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const rec = item as Record<string, unknown>;
+    if (typeof rec.url !== "string" || !rec.url) return [];
+    if (rec.role !== "original" && rec.role !== "related") return [];
+    if (!Array.isArray(rec.paragraphs) || rec.paragraphs.some((p) => typeof p !== "string")) {
+      return [];
+    }
+    return [
+      {
+        url: rec.url,
+        role: rec.role,
+        headline: typeof rec.headline === "string" ? rec.headline : rec.url,
+        paragraphs: rec.paragraphs.filter((p): p is string => typeof p === "string" && p.trim() !== ""),
+      },
+    ];
+  });
+}
+
+function issueFromRow(row: Record<string, unknown>): BoundIssue {
+  return {
+    id: String(row.id),
+    createdAt: new Date(String(row.created_at)).toISOString(),
+    title: String(row.title),
+    leadUrl: String(row.lead_url),
+    take: readTake(row.take),
+    pieces: readPieces(row.pieces),
+  };
+}
+
+export async function issueStore(): Promise<IssueStore> {
+  const db = await openDb();
+  return {
+    async insert(issue) {
+      await db.query(
+        "insert into issues (id, created_at, title, lead_url, take, pieces) values ($1, $2, $3, $4, $5, $6)",
+        [issue.id, issue.createdAt, issue.title, issue.leadUrl, issue.take, issue.pieces],
+      );
+      return issue;
+    },
+    async get(id) {
+      const { rows } = await db.query(
+        "select id, created_at, title, lead_url, take, pieces from issues where id = $1",
+        [id],
+      );
+      const row = rows[0];
+      if (!row) return null;
+      return issueFromRow(row);
+    },
+  };
+}
+
+export async function listIssues(): Promise<BoundIssue[]> {
+  const db = await openDb();
+  const { rows } = await db.query(
+    "select id, created_at, title, lead_url, take, pieces from issues order by created_at desc",
+  );
+  return rows.map(issueFromRow);
 }
