@@ -165,3 +165,17 @@ export function composeIssue(issue: BoundIssue): PagePlan {
     sequence,
   };
 }
+
+export type ReadingSheet =
+  | { kind: "cover" }
+  | { kind: "contents" }
+  | { kind: "piece"; index: number };
+
+/** Cover, then contents, then the sequence. One sheet at a time. Not a stacked page. */
+export function readingSheets(page: PagePlan): ReadingSheet[] {
+  return [
+    { kind: "cover" },
+    { kind: "contents" },
+    ...page.sequence.map((_, index) => ({ kind: "piece" as const, index })),
+  ];
+}

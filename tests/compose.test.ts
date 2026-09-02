@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { composeIssue } from "../src/lib/compose";
+import { composeIssue, readingSheets } from "../src/lib/compose";
 import type { BoundIssue } from "../src/lib/bind";
 import { defaultFigureFit, designContract } from "../src/lib/design";
 
@@ -81,6 +81,12 @@ describe("Read composition", () => {
     expect(page.contents.rows.map((row) => row.folio)).toEqual(["03", "04"]);
     expect(page.sequence).toHaveLength(2);
     expect(page.sequence.map((sheet) => sheet.folio)).toEqual(["03", "04"]);
+    expect(readingSheets(page).map((sheet) => sheet.kind)).toEqual([
+      "cover",
+      "contents",
+      "piece",
+      "piece",
+    ]);
     expect(JSON.stringify(page.cover)).not.toMatch(/https:\/\/example\.com\/kept/);
     expect(page.contents.rows.every((row) => !row.folio.includes("http"))).toBe(true);
     expect(page.cover.kicker).toBeUndefined();

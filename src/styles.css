@@ -272,30 +272,76 @@ button:disabled {
   padding: 2.5rem 1.5rem 6rem;
 }
 
-.issue-nav {
-  margin-bottom: 1.5rem;
+html:has(.stage),
+body:has(.stage) {
+  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
 }
 
-.sheets {
+.stage {
+  max-width: none;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0 0 3rem;
+  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
+  color: var(--paper);
+}
+
+.stage-chrome {
   display: flex;
-  flex-direction: column;
-  gap: 2rem;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 1rem;
+  margin: 0;
+  padding: 1.15rem 1.5rem 1.25rem;
+}
+
+.stage-chrome a {
+  color: color-mix(in srgb, var(--paper) 88%, var(--binding));
+  text-decoration: none;
+}
+
+.stage-turn {
+  display: flex;
+  align-items: baseline;
+  gap: 0.75rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--paper) 72%, var(--binding));
+}
+
+.stage-turn button {
+  background: transparent;
+  color: inherit;
+  border: 1px solid color-mix(in srgb, var(--paper) 28%, transparent);
+  padding: 0.35rem 0.7rem;
+}
+
+.stage-empty {
+  margin: 0;
+  padding: 2rem 1.5rem;
+  color: color-mix(in srgb, var(--paper) 78%, var(--binding));
+}
+
+.stage-well {
+  display: flex;
+  justify-content: center;
+  padding: 0 1.25rem;
 }
 
 .sheet {
   box-sizing: border-box;
+  width: min(68rem, 100%);
   overflow: visible;
   background: var(--paper);
   color: var(--ink);
   border-radius: 0;
-  box-shadow: none;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 22%, transparent);
   padding: 3rem;
-  border-bottom: 1px solid var(--rule);
 }
 
 .sheet:hover {
   transform: none;
-  box-shadow: none;
+  box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 22%, transparent);
 }
 
 .masthead {
