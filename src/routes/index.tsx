@@ -20,9 +20,11 @@ import {
   readLine,
   relatedJoinWhenSelected,
   selectLine,
+  sourceLabel,
   suggestionsUntilSelected,
 } from "../copy";
 import { createIssue } from "../lib/bind";
+import { hostnameOf, keptHeading, paperBadgeLabel } from "../lib/kept";
 import { saveClip, type Clip } from "../lib/save";
 import { defaultBindChoice } from "../lib/select";
 import { clipStore, issueStore, listClips, listIssues } from "../lib/store";
@@ -74,6 +76,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const router = useRouter();
   const { clips, issues } = Route.useLoaderData();
+  const [keeping, setKeeping] = useState(false);
 
   return (
     <main>
@@ -88,17 +91,23 @@ function Home() {
       <form
         onSubmit={(event) => {
           event.preventDefault();
+          if (keeping) return;
           const form = event.currentTarget;
           const url = String(new FormData(form).get("url") ?? "");
-          keepUrl({ data: { url } }).then(() => {
-            form.reset();
-            return router.invalidate();
-          });
+          setKeeping(true);
+          keepUrl({ data: { url } })
+            .then(() => {
+              form.reset();
+              return router.invalidate();
+            })
+            .finally(() => setKeeping(false));
         }}
       >
         <label htmlFor="url">URL</label>
-        <input id="url" name="url" type="url" required placeholder="https://" />
-        <button type="submit">Keep</button>
+        <input id="url" name="url" type="url" required placeholder="https://" disabled={keeping} />
+        <button type="submit" disabled={keeping} aria-busy={keeping}>
+          {keeping ? "Keeping…" : "Keep"}
+        </button>
       </form>
       <p className="empty">{keepHint}</p>
 
@@ -166,9 +175,24 @@ function BindCard({
   const [error, setError] = useState("");
   const related = clip.relatedReporting ?? [];
 
+  const host = hostnameOf(clip.url);
+  const heading = keptHeading(clip);
+  const badge = paperBadgeLabel(clip.understanding);
+  const keptOn = clip.savedAt.slice(0, 10);
+
   return (
     <article className="card">
-      <a href={clip.url}>{clip.url}</a>
+      <header>
+        <p className="folio">
+          {host}
+          {keptOn ? ` · ${keptOn}` : ""}
+        </p>
+        <h3 className="display">{heading}</h3>
+        {badge ? <span className="badge">{badge}</span> : null}
+      </header>
+      <a className="source" href={clip.url} target="_blank" rel="noreferrer">
+        {sourceLabel}
+      </a>
       <UnderstandingNote clip={clip} />
       <form
         onSubmit={(event) => {
@@ -222,13 +246,12 @@ function UnderstandingNote({ clip }: { clip: Clip }) {
       </p>
     );
   }
-  return (
-    <p className="note">
-      {record.contentType}. {record.topic}
-      {record.entities.length > 0 ? ` — ${record.entities.join(", ")}` : ""}
-      {record.date ? ` (${record.date})` : ""}
-    </p>
-  );
+  const extras = [
+    ...record.entities,
+    ...(record.date ? [record.date] : []),
+  ];
+  if (extras.length === 0) return null;
+  return <p className="note">{extras.join(" · ")}</p>;
 }
 
 function RelatedSelect({

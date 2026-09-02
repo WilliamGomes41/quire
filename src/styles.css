@@ -126,6 +126,43 @@ nav {
   background: color-mix(in srgb, var(--paper) 88%, white);
 }
 
+.card header {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.card .folio {
+  margin: 0;
+  color: color-mix(in srgb, var(--ink) 68%, var(--paper));
+}
+
+.card .display {
+  font-size: 1.45rem;
+  line-height: 1.2;
+  margin: 0;
+}
+
+.badge {
+  width: fit-content;
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  font-weight: 600;
+  color: var(--binding);
+  border: 1px solid color-mix(in srgb, var(--binding) 28%, var(--paper));
+  padding: 0.18rem 0.45rem;
+}
+
+.source {
+  font-size: 0.85rem;
+  width: fit-content;
+  text-decoration: none;
+}
+
+button:disabled {
+  opacity: 0.65;
+}
+
 .cover {
   text-decoration: none;
   color: inherit;
