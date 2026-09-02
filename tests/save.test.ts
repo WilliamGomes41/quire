@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { resetMemoryDb } from "../src/lib/db";
 import { relatedPersist, type RelatedRailRecord } from "../src/lib/related";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
-import { clipStore } from "../src/lib/store";
+import { clipStore, listClips } from "../src/lib/store";
 import type { Understanding, UnderstandingRecord } from "../src/lib/understanding";
 
 function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
@@ -30,6 +30,9 @@ function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
         relatedRail: write.related_rail,
         ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
       });
+    },
+    async remove(id) {
+      rows.delete(id);
     },
   };
 }
@@ -305,5 +308,72 @@ describe("successful retrieval writes related_reporting", () => {
       },
     });
     expect(rails[0]).not.toHaveProperty("related_reporting");
+  });
+});
+
+describe("remove takes the clip off the pile", () => {
+  afterEach(() => {
+    resetMemoryDb();
+    delete process.env.XAI_API_KEY;
+    delete process.env.SEARCH_API_KEY;
+    delete process.env.BRAVE_SEARCH_API_KEY;
+  });
+
+  it("drops the clip from listClips and still lets Keep save", async () => {
+    const store = await clipStore();
+    const first = await saveClip({ url: "https://example.com/first" }, store, {
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    const second = await saveClip({ url: "https://example.com/second" }, store, {
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+
+    await store.remove(first.id);
+
+    const afterRemove = await listClips();
+    expect(afterRemove.map((clip) => clip.id)).not.toContain(first.id);
+    expect(afterRemove.map((clip) => clip.id)).toContain(second.id);
+    expect(await store.get(first.id)).toBeNull();
+
+    const third = await saveClip({ url: "https://example.com/third" }, store, {
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    const listed = await listClips();
+    expect(listed.map((clip) => clip.id)).toContain(second.id);
+    expect(listed.map((clip) => clip.id)).toContain(third.id);
+    expect(listed.map((clip) => clip.id)).not.toContain(first.id);
+    expect(listed.map((clip) => clip.url)).toEqual(
+      expect.arrayContaining(["https://example.com/second", "https://example.com/third"]),
+    );
+  });
+
+  it("is persist-safe when the id is already gone", async () => {
+    const store = await clipStore();
+    await expect(store.remove("missing-clip")).resolves.toBeUndefined();
+    await expect(store.remove("")).resolves.toBeUndefined();
+    const kept = await saveClip({ url: "https://example.com/after-missing" }, store, {
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect((await listClips()).map((clip) => clip.id)).toContain(kept.id);
+  });
+
+  it("deletes only the clips row", async () => {
+    const { readFileSync } = await import("node:fs");
+    const store = readFileSync("src/lib/store.ts", "utf8");
+    expect(store).toMatch(/delete from clips where id = \$1/);
+    expect(store).not.toMatch(/delete from issues/);
+    expect(store).not.toMatch(/cascade/i);
   });
 });

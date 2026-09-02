@@ -14,7 +14,7 @@ Keep always saves. A clip is written first. Then one Grok understanding (content
 
 Then the More on this topic rail. Retrieval is a provider slot: one dedicated search API behind a function/config. The search API finds pages (raw). The app normalizes, dedupes, ranks, and persists at most five `related_reporting`.
 
-The kept card shows host and topic (when understood). Source is a separate control, not the title. Related stay checkboxes until selected.
+The kept card shows host and topic (when understood). Source is a separate control, not the title. Remove takes a clip off the pile. Related stay checkboxes until selected; stored snippet and host sit under the title so Select is readable. The Select board is a two-column paper pile on a wide viewport. Keep stays at the top. Create issue stays on the card.
 
 Then Select → Create issue → Read. An issue is whatever you choose to bind. The kept piece is in unless you take it out. Related reporting joins only when you select it. Suggestions stay suggestions until then.
 

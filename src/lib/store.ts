@@ -55,6 +55,10 @@ export async function clipStore(): Promise<ClipStore> {
       }
       await db.query("update clips set related_rail = $2 where id = $1", [id, write.related_rail]);
     },
+    async remove(id) {
+      if (!id) return;
+      await db.query("delete from clips where id = $1", [id]);
+    },
   };
 }
 

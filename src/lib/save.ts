@@ -29,6 +29,7 @@ export type ClipStore = {
   get: (id: string) => Promise<Clip | null>;
   persistUnderstanding: (id: string, record: UnderstandingRecord) => Promise<void>;
   persistRelated: (id: string, record: RelatedRailRecord) => Promise<void>;
+  remove: (id: string) => Promise<void>;
 };
 
 export type SaveOptions = {

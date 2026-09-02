@@ -33,6 +33,9 @@ function memoryClips(): ClipStore & { rows: Map<string, Clip> } {
         ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
       });
     },
+    async remove(id) {
+      rows.delete(id);
+    },
   };
 }
 

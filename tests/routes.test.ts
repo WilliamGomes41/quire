@@ -91,9 +91,39 @@ describe("kept card does not leak to the source", () => {
   it("keeps related titles as checkboxes, not off-site links", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/type="checkbox"/);
-    expect(keep).toMatch(/<span>\{page\.title \|\| page\.url\}<\/span>/);
+    expect(keep).toMatch(/relatedRow\(page\)/);
+    expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
+    expect(keep).toMatch(/row\.host/);
+    expect(keep).toMatch(/row\.snippet/);
     expect(keep).not.toMatch(/<a href=\{page\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
+  });
+
+  it("shows the stored related snippet and host on the Select row", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/\{row\.host \? <span className="folio">\{row\.host\}<\/span> : null\}/);
+    expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
+    expect(keep).not.toMatch(/runRelatedReporting|searchPages\(\{ query/);
+  });
+
+  it("puts Remove on each kept card and invalidates home", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/removeLabel/);
+    expect(keep).toMatch(/removeKept/);
+    expect(keep).toMatch(/store\.remove\(data\.id\)/);
+    expect(keep).toMatch(/type="button"/);
+    expect(keep).toMatch(/className="quiet"/);
+    expect(keep).toMatch(/removeKept\(\{ data: \{ id: clip\.id \} \}\)\.then\(\(\) => router\.invalidate\(\)\)/);
+    expect(keep).not.toMatch(/lucide-react|Trash2|sonner/);
+  });
+
+  it("keeps the Select board as two-column paper tiles on a wide viewport", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(css).toMatch(/@media \(min-width: 48rem\) \{[\s\S]*\.cards \{[\s\S]*grid-template-columns: 1fr 1fr;/);
+    expect(css).toMatch(/main > :not\(\.board\) \{[\s\S]*max-width: 36rem;/);
+    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--ink: #1c1814;/);
+    expect(css).toMatch(/--binding: #3d4a3a;/);
   });
 
   it("does not add a Desk /clips/$id reader or a Press route", () => {

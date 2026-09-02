@@ -19,12 +19,13 @@ import {
   productName,
   readLine,
   relatedJoinWhenSelected,
+  removeLabel,
   selectLine,
   sourceLabel,
   suggestionsUntilSelected,
 } from "../copy";
 import { createIssue } from "../lib/bind";
-import { hostnameOf, keptHeading, paperBadgeLabel } from "../lib/kept";
+import { hostnameOf, keptHeading, paperBadgeLabel, relatedRow } from "../lib/kept";
 import { saveClip, type Clip } from "../lib/save";
 import { defaultBindChoice } from "../lib/select";
 import { clipStore, issueStore, listClips, listIssues } from "../lib/store";
@@ -66,6 +67,13 @@ const bindIssue = createServerFn({ method: "POST" })
       await issueStore(),
     );
     return { note: boundNote, id: issue.id };
+  });
+
+const removeKept = createServerFn({ method: "POST" })
+  .validator((data: { id: string }) => data)
+  .handler(async ({ data }) => {
+    const store = await clipStore();
+    await store.remove(data.id);
   });
 
 export const Route = createFileRoute("/")({
@@ -135,6 +143,9 @@ function Home() {
                       ),
                     )
                   }
+                  onRemove={() =>
+                    removeKept({ data: { id: clip.id } }).then(() => router.invalidate())
+                  }
                 />
               </li>
             ))}
@@ -167,9 +178,11 @@ function Home() {
 function BindCard({
   clip,
   onBind,
+  onRemove,
 }: {
   clip: Clip;
   onBind: (choice: { includeOriginal: boolean; relatedUrls: string[] }) => Promise<void>;
+  onRemove: () => Promise<void>;
 }) {
   const [choice, setChoice] = useState(defaultBindChoice);
   const [error, setError] = useState("");
@@ -190,9 +203,26 @@ function BindCard({
         <h3 className="display">{heading}</h3>
         {badge ? <span className="badge">{badge}</span> : null}
       </header>
-      <a className="source" href={clip.url} target="_blank" rel="noreferrer">
-        {sourceLabel}
-      </a>
+      <p className="actions">
+        <a className="source" href={clip.url} target="_blank" rel="noreferrer">
+          {sourceLabel}
+        </a>
+        <button
+          type="button"
+          className="quiet"
+          onClick={() => {
+            setError("");
+            onRemove().then(
+              () => undefined,
+              (cause: unknown) => {
+                setError(cause instanceof Error ? cause.message : "Could not remove this keep.");
+              },
+            );
+          }}
+        >
+          {removeLabel}
+        </button>
+      </p>
       <UnderstandingNote clip={clip} />
       <form
         onSubmit={(event) => {
@@ -294,18 +324,25 @@ function RelatedSelect({
       <h3>{moreOnThisTopic}</h3>
       <p className="note">{suggestionsUntilSelected}</p>
       <ul>
-        {pages.map((page) => (
-          <li key={page.url}>
-            <label className="choice">
-              <input
-                type="checkbox"
-                checked={selected.includes(page.url)}
-                onChange={(event) => onToggle(page.url, event.target.checked)}
-              />
-              <span>{page.title || page.url}</span>
-            </label>
-          </li>
-        ))}
+        {pages.map((page) => {
+          const row = relatedRow(page);
+          return (
+            <li key={page.url}>
+              <label className="choice">
+                <input
+                  type="checkbox"
+                  checked={selected.includes(page.url)}
+                  onChange={(event) => onToggle(page.url, event.target.checked)}
+                />
+                <span>
+                  <span>{row.title}</span>
+                  {row.host ? <span className="folio">{row.host}</span> : null}
+                  {row.snippet ? <span className="note">{row.snippet}</span> : null}
+                </span>
+              </label>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );

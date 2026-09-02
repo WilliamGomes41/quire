@@ -1,8 +1,10 @@
 /**
  * Kept-piece card display. Host and topic as heading. Source is not the title.
+ * Related rows stay checkboxes; snippet/host are already stored.
  * PROTOCOL §2 / §5 / §10.
  */
 
+import type { RelatedPage } from "./related";
 import type { ContentType, UnderstandingRecord } from "./understanding";
 
 export function hostnameOf(url: string): string {
@@ -26,4 +28,13 @@ export function keptHeading(clip: { url: string; understanding: UnderstandingRec
 export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): ContentType | null {
   if (!record || record.status !== "ok") return null;
   return record.contentType;
+}
+
+/** Title, host, and stored snippet for a Select related row. Not an off-site link. */
+export function relatedRow(page: RelatedPage) {
+  return {
+    title: page.title || page.url,
+    host: hostnameOf(page.url),
+    snippet: page.snippet ?? "",
+  };
 }

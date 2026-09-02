@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostnameOf, keptHeading, paperBadgeLabel } from "../src/lib/kept";
+import { hostnameOf, keptHeading, paperBadgeLabel, relatedRow } from "../src/lib/kept";
 import type { Clip } from "../src/lib/save";
 import type { UnderstandingRecord } from "../src/lib/understanding";
 
@@ -85,5 +85,29 @@ describe("paper badge from stored understanding", () => {
     expect(
       paperBadgeLabel({ status: "failed", message: "model down", at: "2026-09-01T00:00:00.000Z" }),
     ).toBeNull();
+  });
+});
+
+describe("related row is readable without leaving Select", () => {
+  it("shows the stored snippet and host under the title", () => {
+    expect(
+      relatedRow({
+        url: "https://www.bbc.co.uk/iplayer",
+        title: "BBC News Commercial",
+        snippet: "Watch live and catch up on BBC programmes.",
+      }),
+    ).toEqual({
+      title: "BBC News Commercial",
+      host: "bbc.co.uk",
+      snippet: "Watch live and catch up on BBC programmes.",
+    });
+  });
+
+  it("falls back to the url as title when none is stored", () => {
+    expect(relatedRow({ url: "https://news.example/one" })).toEqual({
+      title: "https://news.example/one",
+      host: "news.example",
+      snippet: "",
+    });
   });
 });
