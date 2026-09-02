@@ -1,7 +1,8 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { productName } from "../copy";
-import { composeIssue, type SequenceSheet, type SheetFigure } from "../lib/compose";
+import { composeIssue, readingSheets, type SequenceSheet, type SheetFigure } from "../lib/compose";
 import { issueStore } from "../lib/store";
 
 const loadIssue = createServerFn({ method: "GET" })
@@ -18,61 +19,81 @@ export const Route = createFileRoute("/read/$id")({
 
 function ReadIssue() {
   const issue = Route.useLoaderData();
+  const [index, setIndex] = useState(0);
 
   if (!issue) {
     return (
-      <main className="page">
-        <nav>
+      <main className="stage">
+        <nav className="stage-chrome">
           <Link to="/">{productName}</Link>
         </nav>
-        <p className="empty">That issue is not here.</p>
+        <p className="stage-empty">That issue is not here.</p>
       </main>
     );
   }
 
   const page = composeIssue(issue);
+  const sheets = readingSheets(page);
+  const last = sheets.length - 1;
+  const current = sheets[Math.min(Math.max(index, 0), last)] ?? sheets[0];
+  const piece = current?.kind === "piece" ? page.sequence[current.index] : undefined;
 
   return (
-    <main className="page issue">
-      <nav className="issue-nav">
+    <main className="stage">
+      <nav className="stage-chrome">
         <Link to="/">{productName}</Link>
+        <div className="stage-turn">
+          <button type="button" disabled={index <= 0} onClick={() => setIndex((n) => Math.max(0, n - 1))}>
+            Previous
+          </button>
+          <span>
+            {String(index + 1).padStart(2, "0")} / {String(sheets.length).padStart(2, "0")}
+          </span>
+          <button
+            type="button"
+            disabled={index >= last}
+            onClick={() => setIndex((n) => Math.min(last, n + 1))}
+          >
+            Next
+          </button>
+        </div>
       </nav>
-      <div className="sheets">
-        <article className="sheet sheet-cover" data-sheet="cover">
-          {page.cover.figure ? <SheetPhoto figure={page.cover.figure} /> : null}
-          <div className="cover-content">
-            {page.cover.kicker ? <p className="kicker">{page.cover.kicker}</p> : null}
-            <p className="masthead">{page.cover.masthead}</p>
-            <div className="accent-rule" />
-            <h1>{page.cover.title}</h1>
-            <p className="cover-lead">Inside · {page.cover.lead}</p>
-            {page.cover.meta ? <p className="cover-meta">{page.cover.meta}</p> : null}
-          </div>
-        </article>
-
-        <article className="sheet sheet-contents" data-sheet="contents">
-          <div className="running-head">
-            <span>{productName}</span>
-            <span className="folio">Contents</span>
-          </div>
-          <div className="contents-heading">
-            <p className="kicker">{page.contents.kicker}</p>
-            <h2>{page.contents.title}</h2>
-          </div>
-          <ol className="contents-list">
-            {page.contents.rows.map((row) => (
-              <li key={row.folio} className="toc-row">
-                <p className="toc-title">{row.title}</p>
-                <span className="toc-dots" aria-hidden />
-                <span className="folio">{row.folio}</span>
-              </li>
-            ))}
-          </ol>
-        </article>
-
-        {page.sequence.map((sheet) => (
-          <PieceSheet key={sheet.folio} sheet={sheet} />
-        ))}
+      <div className="stage-well">
+        {current?.kind === "cover" ? (
+          <article className="sheet sheet-cover" data-sheet="cover">
+            {page.cover.figure ? <SheetPhoto figure={page.cover.figure} /> : null}
+            <div className="cover-content">
+              {page.cover.kicker ? <p className="kicker">{page.cover.kicker}</p> : null}
+              <p className="masthead">{page.cover.masthead}</p>
+              <div className="accent-rule" />
+              <h1>{page.cover.title}</h1>
+              <p className="cover-lead">Inside · {page.cover.lead}</p>
+              {page.cover.meta ? <p className="cover-meta">{page.cover.meta}</p> : null}
+            </div>
+          </article>
+        ) : null}
+        {current?.kind === "contents" ? (
+          <article className="sheet sheet-contents" data-sheet="contents">
+            <div className="running-head">
+              <span>{productName}</span>
+              <span className="folio">Contents</span>
+            </div>
+            <div className="contents-heading">
+              <p className="kicker">{page.contents.kicker}</p>
+              <h2>{page.contents.title}</h2>
+            </div>
+            <ol className="contents-list">
+              {page.contents.rows.map((row) => (
+                <li key={row.folio} className="toc-row">
+                  <p className="toc-title">{row.title}</p>
+                  <span className="toc-dots" aria-hidden />
+                  <span className="folio">{row.folio}</span>
+                </li>
+              ))}
+            </ol>
+          </article>
+        ) : null}
+        {piece ? <PieceSheet sheet={piece} /> : null}
       </div>
     </main>
   );

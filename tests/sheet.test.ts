@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { composeIssue } from "../src/lib/compose";
+import { composeIssue, readingSheets } from "../src/lib/compose";
 import type { BoundIssue } from "../src/lib/bind";
 import { kicker } from "../src/copy";
 
@@ -27,7 +27,10 @@ describe("bound magazine sheet", () => {
     expect(read).toMatch(/data-sheet="cover"/);
     expect(read).toMatch(/data-sheet="contents"/);
     expect(read).toMatch(/data-sheet="piece"/);
-    expect(read).toMatch(/page\.sequence\.map/);
+    expect(read).toMatch(/readingSheets\(page\)/);
+    expect(read).toMatch(/current\?\.kind === "cover"/);
+    expect(read).toMatch(/current\?\.kind === "contents"/);
+    expect(read).toMatch(/piece \? <PieceSheet/);
     expect(read).not.toMatch(/className="opener"/);
     expect(read).not.toMatch(/className="spread"/);
     expect(read).not.toMatch(/className="aside"/);
@@ -40,6 +43,9 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/page\.opener/);
     expect(read).toMatch(/className="take"/);
     expect(read).toMatch(/sheet\.take \?/);
+    expect(read).toMatch(/Inside · \{page\.cover\.lead\}/);
+    expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
+    expect(read).not.toMatch(/toc-row[\s\S]{0,120}onClick/);
   });
 
   it("does not print a Take kicker or a raw source URL as the folio", () => {
@@ -69,17 +75,46 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/window\.open/);
   });
 
-  it("sheets are square paper, not cards", () => {
+  it("Read is one sheet at a time on a binding-cloth stage", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const page = composeIssue(issue);
+    expect(readingSheets(page).map((sheet) => sheet.kind)).toEqual(["cover", "contents", "piece"]);
+    expect(read).toMatch(/className="stage"/);
+    expect(read).toMatch(/className="stage-chrome"/);
+    expect(read).toMatch(/className="stage-well"/);
+    expect(read).not.toMatch(/className="sheets"/);
+    expect(read).not.toMatch(/className="spread"/);
+    expect(read).not.toMatch(/className="page issue"/);
+    expect(css).toMatch(/\.stage \{[\s\S]*var\(--binding\)/);
+    expect(css).toMatch(/\.stage \{[\s\S]*#1c1814/);
+    expect(css).not.toMatch(/\.stage \{[\s\S]*#000/);
+    expect(css).not.toMatch(/\.stage \{[\s\S]*#111/);
+    expect(css).not.toMatch(/wood|#5c4033|#8b5a2b|#3e2723/i);
+    expect(css).toMatch(/\.sheet \{[\s\S]*background: var\(--paper\)/);
     expect(css).toMatch(/\.sheet \{[\s\S]*border-radius:\s*0/);
-    expect(css).toMatch(/\.sheet \{[\s\S]*box-shadow:\s*none/);
+    expect(css).toMatch(/\.sheet \{[\s\S]*box-shadow: 0 10px 28px/);
     expect(css).toMatch(/\.sheet:hover \{[\s\S]*transform:\s*none/);
-    expect(css).toMatch(/\.sheet:hover \{[\s\S]*box-shadow:\s*none/);
+    expect(css).toMatch(/\.sheet:hover \{[\s\S]*box-shadow: 0 10px 28px/);
+    expect(css).not.toMatch(/page-curl|perspective|rotateY|flip-book|page-flip/i);
+    expect(css).not.toMatch(/\.sheet:hover \{[^}]*translateY/);
     expect(css).not.toMatch(/rounded-\[28px\]/);
     expect(css).not.toMatch(/mute-pine|#3d5a4c|#2f4f3e/i);
     expect(css).toMatch(/--paper: #f3eee4;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(keep).not.toMatch(/className="stage"/);
+    expect(keep).toMatch(/className="card/);
+  });
+
+  it("keeps app chrome on the stage, not on the paper", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    expect(read).toMatch(/<nav className="stage-chrome">/);
+    expect(read).toMatch(/<Link to="\/">\{productName\}<\/Link>/);
+    expect(read.indexOf("stage-chrome")).toBeLessThan(read.indexOf("stage-well"));
+    expect(read).not.toMatch(/<nav className="issue-nav">/);
+    expect(read).not.toMatch(/className="sheet[^"]*"[^>]*>[\s\S]*stage-chrome/);
   });
 
   it("photos contain unless Intent already says cover", () => {
