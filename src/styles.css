@@ -23,12 +23,16 @@ a {
 }
 
 main {
-  max-width: 68rem;
+  max-width: 36rem;
   margin: 0 auto;
   padding: 2.5rem 1.25rem 4rem;
 }
 
-main > :not(.board) {
+main:has(> .board) {
+  max-width: 68rem;
+}
+
+main:has(> .board) > :not(.board) {
   max-width: 36rem;
 }
 

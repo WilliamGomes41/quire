@@ -120,7 +120,8 @@ describe("kept card does not leak to the source", () => {
   it("keeps the Select board as two-column paper tiles on a wide viewport", () => {
     const css = readFileSync("src/styles.css", "utf8");
     expect(css).toMatch(/@media \(min-width: 48rem\) \{[\s\S]*\.cards \{[\s\S]*grid-template-columns: 1fr 1fr;/);
-    expect(css).toMatch(/main > :not\(\.board\) \{[\s\S]*max-width: 36rem;/);
+    expect(css).toMatch(/main:has\(> \.board\) \{[\s\S]*max-width: 68rem;/);
+    expect(css).toMatch(/main:has\(> \.board\) > :not\(\.board\) \{[\s\S]*max-width: 36rem;/);
     expect(css).toMatch(/--paper: #f3eee4;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #3d4a3a;/);
