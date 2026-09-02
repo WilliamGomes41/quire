@@ -54,5 +54,72 @@ describe("PR 4 surface", () => {
     expect(text).not.toMatch(/class ArtDirector/);
     expect(text).not.toMatch(/class Magazine/);
     expect(text).not.toMatch(/class Bind\b/);
+    expect(text).not.toMatch(/class CharacterizationBadge/);
+    expect(text).not.toMatch(/class ClipCard/);
+  });
+});
+
+describe("kept card does not leak to the source", () => {
+  it("does not use clip.url as the primary heading link", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).not.toMatch(/<a href=\{clip\.url\}>\{clip\.url\}<\/a>/);
+    expect(keep).toMatch(/keptHeading\(clip\)/);
+    expect(keep).toMatch(/<h3 className="display">\{heading\}<\/h3>/);
+    expect(keep).toMatch(/hostnameOf\(clip\.url\)/);
+    expect(keep).not.toMatch(/to=["']\/clips\/\$clipId["']/);
+    expect(keep).not.toMatch(/\/clips\/\$/);
+  });
+
+  it("keeps Source as a separate control", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/className="source"/);
+    expect(keep).toMatch(/sourceLabel/);
+    expect(keep).toMatch(/href=\{clip\.url\}/);
+    expect(keep).toMatch(/target="_blank"/);
+    const sourceControl = keep.match(
+      /<a className="source" href=\{clip\.url\} target="_blank" rel="noreferrer">\s*\{sourceLabel\}\s*<\/a>/,
+    );
+    expect(sourceControl).not.toBeNull();
+  });
+
+  it("shows a paper badge only from an ok understanding", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
+    expect(keep).toMatch(/\{badge \? <span className="badge">\{badge\}<\/span> : null\}/);
+  });
+
+  it("keeps related titles as checkboxes, not off-site links", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/type="checkbox"/);
+    expect(keep).toMatch(/<span>\{page\.title \|\| page\.url\}<\/span>/);
+    expect(keep).not.toMatch(/<a href=\{page\.url\}/);
+    expect(keep).not.toMatch(/href=\{page\.url\}/);
+  });
+
+  it("does not add a Desk /clips/$id reader or a Press route", () => {
+    const routes = walk("src/routes");
+    expect(routes.some((file) => file.includes("clips"))).toBe(false);
+    expect(routes.some((file) => file.includes("press"))).toBe(false);
+    const tree = readFileSync("src/routeTree.gen.ts", "utf8");
+    expect(tree).not.toMatch(/\/clips\/\$/);
+    expect(tree).not.toMatch(/\/press/);
+    expect(tree).toMatch(/\/read\/\$id/);
+  });
+
+  it("does not copy lucide, shadcn, sonner, notes, delete, or mute-pine", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(keep).not.toMatch(/lucide-react|sonner|@\/components\/ui|TopicRail|ExternalLink|Trash2/);
+    expect(css).not.toMatch(/mute-pine|#3d5a4c|#2f4f3e/i);
+    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--ink: #1c1814;/);
+    expect(css).toMatch(/--binding: #3d4a3a;/);
+  });
+
+  it("lets Keep show pending so mashed clicks do not duplicate", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/if \(keeping\) return;/);
+    expect(keep).toMatch(/disabled=\{keeping\}/);
+    expect(keep).toMatch(/Keeping…/);
   });
 });

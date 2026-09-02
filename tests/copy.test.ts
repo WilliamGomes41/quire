@@ -13,6 +13,7 @@ import {
   nothingMoreOnTopic,
   originalInByDefault,
   readLine,
+  sourceLabel,
   takeLabel,
 } from "../src/copy";
 
@@ -25,6 +26,7 @@ describe("product voice", () => {
     expect(emptyState).toMatch(/Paste a URL/);
     expect(couldNotUnderstand).toMatch(/Could not understand/);
     expect(createIssueLabel).toBe("Create issue");
+    expect(sourceLabel).toBe("Source");
     expect(readLine).toMatch(/bound issue/i);
     expect(originalInByDefault).toMatch(/unless you take it out/);
     expect(takeLabel).toBe("Take");

@@ -38,6 +38,8 @@ export const relatedJoinWhenSelected = "Related reporting joins only when you se
 
 export const createIssueLabel = "Create issue";
 
+export const sourceLabel = "Source";
+
 export const readLine = "Read the bound issue.";
 
 export const takeLabel = "Take";

@@ -14,13 +14,15 @@ Keep always saves. A clip is written first. Then one Grok understanding (content
 
 Then the More on this topic rail. Retrieval is a provider slot: one dedicated search API behind a function/config. The search API finds pages (raw). The app normalizes, dedupes, ranks, and persists at most five `related_reporting`.
 
+The kept card shows host and topic (when understood). Source is a separate control, not the title. Related stay checkboxes until selected.
+
 Then Select → Create issue → Read. An issue is whatever you choose to bind. The kept piece is in unless you take it out. Related reporting joins only when you select it. Suggestions stay suggestions until then.
 
 Create issue fetches the author's original words and locks them. Magazine is that bound issue — a readable page, not a restyle of a URL list. Cards open that page. A take may sit beside the complete original. It is optional. It is not a TL;DR kicker. The page still reads if the take is missing.
 
 Search failure, understanding failure, a failed take, or a failed bind do not fail Keep.
 
-Canonical law lives in [quire-bind PROTOCOL.md](https://github.com/WilliamGomes41/quire-bind/blob/main/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
+Canonical law lives in [quire-bind PROTOCOL.md @ 444e429](https://github.com/WilliamGomes41/quire-bind/blob/444e4299778d0297a889675426e45f87a66fb88f/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
 
 ## Stack
 
