@@ -73,7 +73,7 @@ describe("kept card does not leak to the source", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/className="source"/);
     expect(keep).toMatch(/sourceLabel/);
-    expect(keep).toMatch(/<span className="source">\{sourceLabel\}<\/span>/);
+    expect(keep).toMatch(/<span className="source">\{host \|\| sourceLabel\}<\/span>/);
     expect(keep).not.toMatch(/href=\{clip\.url\}/);
     expect(keep).not.toMatch(/target="_blank"/);
   });
@@ -115,6 +115,7 @@ describe("kept card does not leak to the source", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep.match(/createIssueLabel/g)?.length).toBe(2);
     expect(keep).toMatch(/chosenFromBoard\(board\)/);
+    expect(keep).toMatch(/chosenPieces\(clip, choice\)/);
     expect(keep).toMatch(/nothingSelected/);
     expect(keep).toMatch(/selections:/);
     expect(keep).not.toMatch(/onBind/);
@@ -128,7 +129,9 @@ describe("kept card does not leak to the source", () => {
     expect(keep).toMatch(/onToggle/);
     expect(keep).not.toMatch(/href=\{clip\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
-    expect(keep).not.toMatch(/<img|og:image|ogImage/);
+    expect(keep).toMatch(/keptFigure\(clip\.sourceHeadline\)/);
+    expect(keep).toMatch(/figure \?/);
+    expect(keep).not.toMatch(/fetchOg|ogImage/);
   });
 
   it("hides the Select sermons on the tiles", () => {
@@ -144,6 +147,15 @@ describe("kept card does not leak to the source", () => {
     expect(css).toMatch(/--paper: #f3eee4;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #3d4a3a;/);
+  });
+
+  it("does not fetch OG images as a second Keep pass", () => {
+    const save = readFileSync("src/lib/save.ts", "utf8");
+    const headline = readFileSync("src/lib/source-headline.ts", "utf8");
+    expect(save).toMatch(/persistSourceHeadline/);
+    expect(save).not.toMatch(/fetchArticleWords/);
+    expect(headline).toMatch(/og:image/);
+    expect(headline).not.toMatch(/fetchOg|downloadImage/);
   });
 
   it("does not add a Desk /clips/$id reader or a Press route", () => {

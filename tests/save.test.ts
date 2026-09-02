@@ -423,6 +423,7 @@ describe("Keep persists a source headline fail-closed", () => {
       readHeadline: async () => ({
         text: "The harbour vote",
         snippet: "The assembly met at dusk in Praia.",
+        figure: "https://news.example/harbour.jpg",
       }),
       understand: async () => {
         throw new Error("model down");
@@ -433,6 +434,7 @@ describe("Keep persists a source headline fail-closed", () => {
       status: "ok",
       text: "The harbour vote",
       snippet: "The assembly met at dusk in Praia.",
+      figure: "https://news.example/harbour.jpg",
     });
     expect(store.rows.get(withTitle.id)?.url).toBe("https://example.com/headline");
 

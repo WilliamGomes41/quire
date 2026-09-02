@@ -46,6 +46,12 @@ export function keptSnippet(record: SourceHeadlineRecord | null | undefined) {
   return record.snippet?.trim() ?? "";
 }
 
+/** Stored source figure URL only. Never fetched here. Never invented. */
+export function keptFigure(record: SourceHeadlineRecord | null | undefined) {
+  if (!record || record.status === "failed") return "";
+  return record.figure?.trim() ?? "";
+}
+
 /** Paper badge from stored understanding when status is ok. No badge if missing or failed. */
 export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): ContentType | null {
   if (!record || record.status !== "ok") return null;

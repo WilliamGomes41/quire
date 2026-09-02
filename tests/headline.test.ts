@@ -36,6 +36,43 @@ describe("source headline is extracted, not invented", () => {
     });
   });
 
+  it("keeps a source-owned snippet and stored figure without inventing either", () => {
+    expect(
+      extractSourceHeadline(
+        `<html><head>
+          <meta property="og:title" content="The harbour vote" />
+          <meta property="og:image" content="/harbour.jpg" />
+          <meta property="og:description" content="A harbour note." />
+        </head><body></body></html>`,
+        "https://news.example/harbour",
+      ),
+    ).toEqual({
+      text: "The harbour vote",
+      snippet: "A harbour note.",
+      figure: "https://news.example/harbour.jpg",
+    });
+
+    expect(
+      extractSourceHeadline(
+        `<html><head><meta property="og:image" content="javascript:alert(1)" /></head><body></body></html>`,
+        "https://news.example/harbour",
+      ).figure,
+    ).toBeUndefined();
+
+    expect(
+      sourceHeadlineRecord({
+        text: "The harbour vote",
+        snippet: "The assembly met at dusk.",
+        figure: "https://news.example/harbour.jpg",
+      }),
+    ).toEqual({
+      status: "ok",
+      text: "The harbour vote",
+      snippet: "The assembly met at dusk.",
+      figure: "https://news.example/harbour.jpg",
+    });
+  });
+
   it("speaks empty vs fail as distinct copy", () => {
     expect(noHeadlineOnSource).not.toBe(couldNotReadHeadline);
     expect(sourceHeadlineCopy({ status: "empty" }).text).toBe(noHeadlineOnSource);

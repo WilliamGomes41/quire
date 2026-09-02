@@ -63,7 +63,10 @@ export function buildSearchQuery(input: { url: string; topic?: Understanding | n
   return compact([topic, ...entities, date].filter(Boolean).join(" "), 320);
 }
 
-export function normalizeRelated(raw: { url?: string; title?: string; snippet?: string }[], keepUrl: string) {
+export function normalizeRelated(
+  raw: { url?: string; title?: string; snippet?: string; date?: string }[],
+  keepUrl: string,
+) {
   const keep = canonicalizeUrl(keepUrl);
   const pages: RelatedPage[] = [];
   for (const item of raw) {
@@ -71,10 +74,12 @@ export function normalizeRelated(raw: { url?: string; title?: string; snippet?: 
     if (!url || url === keep) continue;
     const title = compact(item.title, 500);
     const snippet = compact(item.snippet, 1000);
+    const date = compact(item.date, 10);
     pages.push({
       url,
       ...(title ? { title } : {}),
       ...(snippet ? { snippet } : {}),
+      ...(date ? { date } : {}),
     });
   }
   return pages;

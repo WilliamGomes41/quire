@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostnameOf, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../src/lib/kept";
+import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../src/lib/kept";
 import type { Clip } from "../src/lib/save";
 
 function clip(over: Partial<Clip> = {}): Clip {
@@ -30,6 +30,22 @@ describe("kept card heading", () => {
     expect(keptHeading(kept)).not.toBe(kept.url);
     expect(keptHeading(kept)).not.toBe("A harbour vote");
     expect(keptSnippet(kept.sourceHeadline)).toBe("The assembly met at dusk.");
+    expect(keptFigure(kept.sourceHeadline)).toBe("");
+  });
+
+  it("surfaces a stored figure and never invents one", () => {
+    const pictured = clip({
+      sourceHeadline: {
+        status: "ok",
+        text: "The harbour vote",
+        figure: "https://news.example/harbour.jpg",
+      },
+    });
+    expect(keptFigure(pictured.sourceHeadline)).toBe("https://news.example/harbour.jpg");
+    expect(keptFigure(clip().sourceHeadline)).toBe("");
+    expect(
+      keptFigure({ status: "failed", message: "fetch down", at: "2026-09-01T00:00:00.000Z" }),
+    ).toBe("");
   });
 
   it("falls back to host and stored topic when there is no author headline", () => {

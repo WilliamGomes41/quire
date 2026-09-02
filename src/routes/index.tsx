@@ -22,9 +22,9 @@ import {
   sourceLabel,
 } from "../copy";
 import { createIssue } from "../lib/bind";
-import { hostnameOf, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../lib/kept";
+import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../lib/kept";
 import { saveClip, type Clip } from "../lib/save";
-import { chosenFromBoard, defaultBindChoice, type BindChoice } from "../lib/select";
+import { chosenFromBoard, chosenPieces, defaultBindChoice, type BindChoice } from "../lib/select";
 import { clipStore, issueStore, listClips, listIssues } from "../lib/store";
 import { resolveSearchPages } from "../lib/search";
 import { runGrokUnderstanding } from "../lib/understanding";
@@ -163,11 +163,13 @@ function Home() {
                 setBindError("");
                 bindIssue({
                   data: {
-                    selections: board.map(({ clip, choice }) => ({
-                      clipId: clip.id,
-                      includeOriginal: choice.includeOriginal,
-                      relatedUrls: choice.relatedUrls,
-                    })),
+                    selections: board
+                      .filter(({ clip, choice }) => chosenPieces(clip, choice).length > 0)
+                      .map(({ clip, choice }) => ({
+                        clipId: clip.id,
+                        includeOriginal: choice.includeOriginal,
+                        relatedUrls: choice.relatedUrls,
+                      })),
                   },
                 }).then(
                   (result) =>
@@ -224,6 +226,7 @@ function BindCard({
   const host = hostnameOf(clip.url);
   const heading = keptHeading(clip);
   const snippet = keptSnippet(clip.sourceHeadline);
+  const figure = keptFigure(clip.sourceHeadline);
   const badge = paperBadgeLabel(clip.understanding);
   const keptOn = clip.savedAt.slice(0, 10);
   const topic = clip.understanding?.status === "ok" ? clip.understanding.topic : "";
@@ -235,7 +238,7 @@ function BindCard({
     (clip.understanding?.status === "ok" && clip.understanding.date) || keptOn;
   const secondary =
     clip.sourceHeadline?.status === "ok"
-      ? [host, date, topic].filter(Boolean).filter((item, index, all) => all.indexOf(item) === index)
+      ? [date, topic].filter(Boolean).filter((item, index, all) => all.indexOf(item) === index)
       : [date].filter(Boolean);
 
   return (
@@ -254,6 +257,11 @@ function BindCard({
             {badge ? <span className="badge">{badge}</span> : null}
           </header>
           {snippet ? <p className="note">{snippet}</p> : null}
+          {figure ? (
+            <span className="figure">
+              <img src={figure} alt="" />
+            </span>
+          ) : null}
           {secondary.length > 0 ? <p className="folio">{secondary.join(" · ")}</p> : null}
           {headlineSpoken ? (
             <p className={headlineSpoken.kind === "fail" ? "fail" : "empty"}>
@@ -265,7 +273,7 @@ function BindCard({
         </span>
       </label>
       <p className="actions">
-        <span className="source">{sourceLabel}</span>
+        <span className="source">{host || sourceLabel}</span>
         <button
           type="button"
           className="quiet"
