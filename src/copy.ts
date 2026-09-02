@@ -44,6 +44,8 @@ export const removeLabel = "Remove";
 
 export const readLine = "Read the bound issue.";
 
+export const contentsKicker = "In this issue";
+
 export const takeLabel = "Take";
 
 export const boundNote = "Bound.";

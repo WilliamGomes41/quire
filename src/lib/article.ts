@@ -9,6 +9,7 @@ export type ArticleWords = {
   url: string;
   headline: string;
   paragraphs: string[];
+  figure?: string;
 };
 
 export function compactText(value: unknown, max = 20_000) {
@@ -86,6 +87,35 @@ function headlineFrom(html: string) {
   return compactText(stripTags(sliceTagged(html, "title")), 400);
 }
 
+function metaContent(html: string, key: string, max = 2000) {
+  const named = html.match(
+    new RegExp(
+      `<meta\\b[^>]*(?:property|name)=["']${key}["'][^>]*content=["']([^"']*)["']`,
+      "i",
+    ),
+  );
+  if (named?.[1]) return compactText(decodeEntities(named[1]), max);
+  const contentFirst = html.match(
+    new RegExp(
+      `<meta\\b[^>]*content=["']([^"']*)["'][^>]*(?:property|name)=["']${key}["']`,
+      "i",
+    ),
+  );
+  return contentFirst?.[1] ? compactText(decodeEntities(contentFirst[1]), max) : "";
+}
+
+/** Source-owned figure already on the page. Never invented. Public http only. */
+export function figureFromHtml(html: string, baseUrl: string) {
+  const raw = metaContent(html, "og:image") || metaContent(html, "twitter:image");
+  if (!raw) return "";
+  try {
+    const url = new URL(raw, baseUrl || undefined);
+    return isPublicHttpUrl(url.href) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function paragraphsFrom(html: string) {
   const fromP = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
     .map((match) => compactText(stripTags(match[1]), 8000))
@@ -110,10 +140,12 @@ export function extractArticleWords(html: string, url: string): ArticleWords {
   if (!headline && paragraphs.length === 0) {
     throw new Error(couldNotFetchWords);
   }
+  const figure = figureFromHtml(cleaned, url);
   return {
     url,
     headline: headline || compactText(url, 400),
     paragraphs,
+    ...(figure ? { figure } : {}),
   };
 }
 

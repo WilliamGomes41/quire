@@ -1,6 +1,7 @@
 /**
  * Declarative closed contract. Deterministic planner. Not a class tree.
  * Protocol terms are not architecture classes. PROTOCOL §7 / §10.
+ * Treatments change the sheet. They are not printed labels.
  */
 
 export const designContract = {
@@ -35,15 +36,55 @@ export type DesignIntent = {
   body_flow: (typeof designContract.body_flows)[number];
   section_transitions: (typeof designContract.section_transitions)[number];
   take_slot: "body-with-sidebar" | "none";
+  figure_fit: (typeof designContract.figure_fit)[number];
 };
 
-export function designIntent(input: { hasTake: boolean; hasSecondary: boolean }): DesignIntent {
+export type PiecePlanInput = {
+  hasTake: boolean;
+  hasSecondary: boolean;
+  hasFigure?: boolean;
+  role?: "original" | "related";
+  chars?: number;
+  index?: number;
+};
+
+/** Photographs sit at intrinsic ratio unless Intent already says cover. Cover is never the fallback. */
+export function defaultFigureFit() {
+  return "contain" as const;
+}
+
+export function designIntent(input: PiecePlanInput): DesignIntent {
+  const hasFigure = Boolean(input.hasFigure);
+  const isLead = input.role !== "related";
+  const short = !isLead && (input.chars ?? 0) > 0 && (input.chars ?? 0) < 520;
+  const long = (input.chars ?? 0) >= 3600;
+  let treatment: DesignIntent["treatment"] = "essay";
+  let composition: DesignIntent["composition"] = "essay";
+  let image_emphasis: DesignIntent["image_emphasis"] = hasFigure ? "inline" : "none";
+
+  if (isLead && input.hasSecondary) {
+    treatment = "feature";
+    composition = hasFigure ? "visual-opener" : "essay";
+    image_emphasis = hasFigure ? "dominant" : "none";
+  } else if (isLead && hasFigure) {
+    treatment = "essay";
+    composition = "visual-opener";
+    image_emphasis = "dominant";
+  } else if (!isLead && short) {
+    treatment = "compact";
+    composition = "compact";
+  } else if (!isLead && hasFigure) {
+    treatment = "illustrated";
+    composition = (input.index ?? 0) % 2 === 0 ? "split-left" : "split-right";
+  }
+
   return {
-    treatment: input.hasSecondary ? "feature" : "essay",
-    composition: "visual-opener",
-    image_emphasis: "none",
-    body_flow: "single",
+    treatment,
+    composition,
+    image_emphasis,
+    body_flow: long && treatment === "feature" ? "two" : "single",
     section_transitions: input.hasSecondary ? "standalone" : "none",
-    take_slot: input.hasTake ? "body-with-sidebar" : "none",
+    take_slot: input.hasTake && isLead ? "body-with-sidebar" : "none",
+    figure_fit: defaultFigureFit(),
   };
 }

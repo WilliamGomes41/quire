@@ -14,6 +14,7 @@ export type BoundPiece = {
   role: "original" | "related";
   headline: string;
   paragraphs: string[];
+  figure?: string;
 };
 
 export type BoundIssue = {
@@ -55,6 +56,7 @@ async function wordsFor(
       role: chosen.role,
       headline: words.headline,
       paragraphs: words.paragraphs,
+      ...(words.figure ? { figure: words.figure } : {}),
     };
   } catch {
     return null;

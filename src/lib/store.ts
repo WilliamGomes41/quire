@@ -1,5 +1,6 @@
 import { openDb } from "./db";
 import type { BoundIssue, BoundPiece, IssueStore } from "./bind";
+import { isPublicHttpUrl } from "./article";
 import {
   readRelatedRail,
   readRelatedReporting,
@@ -86,12 +87,15 @@ function readPieces(value: unknown): BoundPiece[] {
     if (!Array.isArray(rec.paragraphs) || rec.paragraphs.some((p) => typeof p !== "string")) {
       return [];
     }
+    const figure =
+      typeof rec.figure === "string" && isPublicHttpUrl(rec.figure.trim()) ? rec.figure.trim() : "";
     return [
       {
         url: rec.url,
         role: rec.role,
         headline: typeof rec.headline === "string" ? rec.headline : rec.url,
         paragraphs: rec.paragraphs.filter((p): p is string => typeof p === "string" && p.trim() !== ""),
+        ...(figure ? { figure } : {}),
       },
     ];
   });

@@ -18,6 +18,30 @@ describe("original words stay the author's", () => {
       "The assembly met at dusk in Praia.",
       "The motion carried after a quiet count.",
     ]);
+    expect(words.figure).toBeUndefined();
+  });
+
+  it("locks a source-owned figure from og:image and never invents one", () => {
+    const words = extractArticleWords(
+      `<html><head>
+        <meta property="og:image" content="https://images.example/harbour.jpg" />
+        <title>Ignore</title>
+      </head><body>
+        <article>
+          <h1>The harbour vote</h1>
+          <p>The assembly met at dusk in Praia.</p>
+        </article>
+      </body></html>`,
+      "https://example.com/kept",
+    );
+    expect(words.figure).toBe("https://images.example/harbour.jpg");
+
+    const local = extractArticleWords(
+      `<html><head><meta property="og:image" content="http://127.0.0.1/x.jpg" /></head>
+       <body><article><h1>Kept</h1><p>Author sentence one.</p></article></body></html>`,
+      "https://example.com/kept",
+    );
+    expect(local.figure).toBeUndefined();
   });
 
   it("refuses private hosts and returns fetched words from public HTML", async () => {
