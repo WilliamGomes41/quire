@@ -67,7 +67,7 @@ function ReadIssue() {
               <p className="masthead">{page.cover.masthead}</p>
               <div className="accent-rule" />
               <h1>{page.cover.title}</h1>
-              <p className="cover-lead">Inside · {page.cover.lead}</p>
+              {page.cover.lead ? <p className="cover-lead">{page.cover.lead}</p> : null}
               {page.cover.meta ? <p className="cover-meta">{page.cover.meta}</p> : null}
             </div>
           </article>
@@ -76,7 +76,7 @@ function ReadIssue() {
           <article className="sheet sheet-contents" data-sheet="contents">
             <div className="running-head">
               <span>{productName}</span>
-              <span className="folio">Contents</span>
+              <span className="folio">{page.contents.folio}</span>
             </div>
             <div className="contents-heading">
               <p className="kicker">{page.contents.kicker}</p>

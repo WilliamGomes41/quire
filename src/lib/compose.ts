@@ -50,6 +50,7 @@ export type PagePlan = {
   contents: {
     kicker: string;
     title: string;
+    folio: string;
     rows: { title: string; folio: string }[];
   };
   sequence: SequenceSheet[];
@@ -160,6 +161,7 @@ export function composeIssue(issue: BoundIssue): PagePlan {
     contents: {
       kicker: contentsKicker,
       title: "Contents",
+      folio: folioOf(2),
       rows: sequence.map((sheet) => ({ title: sheet.headline, folio: sheet.folio })),
     },
     sequence,

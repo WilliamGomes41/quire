@@ -43,7 +43,8 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/page\.opener/);
     expect(read).toMatch(/className="take"/);
     expect(read).toMatch(/sheet\.take \?/);
-    expect(read).toMatch(/Inside · \{page\.cover\.lead\}/);
+    expect(read).not.toMatch(/Inside ·/);
+    expect(read).not.toMatch(/Inside/);
     expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
     expect(read).not.toMatch(/toc-row[\s\S]{0,120}onClick/);
   });
@@ -53,9 +54,15 @@ describe("bound magazine sheet", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const page = composeIssue(issue);
     expect(page.sequence[0]?.folio).toBe("03");
+    expect(page.contents.folio).toBe("02");
+    expect(page.sequence[0]?.folio).toMatch(/^\d+$/);
+    expect(page.contents.folio).toMatch(/^\d+$/);
+    expect(page.contents.rows[0]?.folio).toMatch(/^\d+$/);
     expect(page.sequence[0]?.folio).not.toMatch(/https?:\/\//);
     expect(page.cover.meta).not.toMatch(/https?:\/\//);
     expect(page.contents.rows[0]?.folio).not.toMatch(/http/);
+    expect(read).not.toMatch(/folio">Contents</);
+    expect(read).toMatch(/page\.contents\.folio/);
     expect(read).not.toMatch(/sheet\.url|piece\.url|lead\.url|opener\.source/);
     expect(read).toMatch(/sheet\.folio/);
     expect(read).toMatch(/className="take"/);
@@ -150,5 +157,60 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/lucide-react|sonner|@\/components\/ui|BindDialog|notes/);
     expect(read).not.toMatch(/\/clips\/\$/);
     expect(read).not.toMatch(/\bPress\b/);
+  });
+
+  it("sets sheet type: Serif body in band, Sans chrome, no third font, no Inside ·", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const root = readFileSync("src/routes/__root.tsx", "utf8");
+    const save = readFileSync("src/lib/save.ts", "utf8");
+    const page = composeIssue(issue);
+    const body = css.match(/\.piece-body \{([^}]+)\}/)?.[1] ?? "";
+    const size = Number(/font-size:\s*([\d.]+)px/.exec(body)?.[1]);
+    const leading = Number(/line-height:\s*([\d.]+)/.exec(body)?.[1]);
+    const measure = Number(/max-width:\s*([\d.]+)ch/.exec(body)?.[1]);
+    const families = [...root.matchAll(/family=([^:&]+)/g)].map((match) => match[1]);
+
+    expect(css).toMatch(/--font-serif:\s*"Source Serif 4"/);
+    expect(css).toMatch(/--font-sans:\s*"Source Sans 3"/);
+    expect(body).toMatch(/font-family:\s*var\(--font-serif\)/);
+    expect(size).toBeGreaterThanOrEqual(16);
+    expect(size).toBeLessThanOrEqual(18);
+    expect(leading).toBeGreaterThanOrEqual(1.65);
+    expect(leading).toBeLessThanOrEqual(1.7);
+    expect(measure).toBeGreaterThanOrEqual(45);
+    expect(measure).toBeLessThanOrEqual(75);
+
+    expect(css).toMatch(/\.running-head[\s\S]*?font-family:\s*var\(--font-sans\)/);
+    expect(css).toMatch(/\.sheet \.folio \{[\s\S]*?font-family:\s*var\(--font-sans\)/);
+    expect(css).toMatch(/\.kicker \{[\s\S]*?font-family:\s*var\(--font-sans\)/);
+    expect(css).toMatch(/\.sheet-cover h1 \{[\s\S]*font-family:\s*var\(--font-serif\)/);
+    expect(css).toMatch(/\.sheet-cover h1 \{[\s\S]*font-weight:\s*600/);
+    expect(css).toMatch(/\.sheet-piece \.piece-header h2 \{[\s\S]*font-weight:\s*600/);
+    expect(css).toMatch(/\.take \{[\s\S]*font-style:\s*italic/);
+    expect(css).toMatch(/\.take \{[\s\S]*border-top:\s*1px solid var\(--ink\)/);
+    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--ink: #1c1814;/);
+    expect(css).toMatch(/--binding: #3d4a3a;/);
+
+    expect(read).not.toMatch(/Inside ·/);
+    expect(read).not.toMatch(/Inside/);
+    expect(read).not.toMatch(/>Take</);
+    expect(read).not.toMatch(/takeLabel/);
+    expect(read).toMatch(/page\.cover\.kicker \? <p className="kicker">\{page\.cover\.kicker\}<\/p> : null/);
+    expect(page.cover.kicker).toBeUndefined();
+    expect(page.contents.folio).toBe("02");
+    expect(page.sequence[0]?.folio).toBe("03");
+
+    expect(families).toEqual(["Source+Sans+3", "Source+Serif+4"]);
+    expect(css).not.toMatch(/Playfair|Fraunces|Newsreader|Instrument|Cormorant|Libre Baskerville|IBM Plex|Inter["']/);
+    expect(root).not.toMatch(/Playfair|Fraunces|Newsreader|family=Source\+Serif\+4.*family=/);
+
+    expect(read).not.toMatch(/\bPress\b/);
+    expect(read).not.toMatch(/\/clips\/\$/);
+    expect(save).toMatch(/store\.insert\(/);
+    expect(save).toMatch(/persistUnderstanding/);
+    expect(save).toMatch(/persistRelated/);
+    expect(save).toMatch(/persistSourceHeadline/);
   });
 });
