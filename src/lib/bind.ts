@@ -5,7 +5,7 @@
 
 import { couldNotFetchWords, nothingSelected } from "../copy";
 import { fetchArticleWords, type ArticleWords } from "./article";
-import { chosenPieces, readBindChoice, type BindChoice, type ChosenPiece } from "./select";
+import { chosenFromBoard, type BindChoice, type BoardItem, type ChosenPiece } from "./select";
 import type { Clip } from "./save";
 import { runGrokTake, takeFail, type TakeRecord } from "./take";
 
@@ -66,12 +66,12 @@ async function wordsFor(
  * Take is optional after Select. Take failure does not fail the issue.
  */
 export async function createIssue(
-  input: { clip: Clip; choice?: Partial<BindChoice> | null },
+  input: { clip: Clip; choice?: Partial<BindChoice> | null } | { items: BoardItem[] },
   issues: IssueStore,
   options?: CreateIssueOptions,
 ): Promise<BoundIssue> {
-  const choice = readBindChoice(input.choice);
-  const chosen = chosenPieces(input.clip, choice);
+  const items: BoardItem[] = "items" in input ? input.items : [{ clip: input.clip, choice: input.choice }];
+  const chosen = chosenFromBoard(items);
   if (chosen.length === 0) {
     throw new Error(nothingSelected);
   }

@@ -8,6 +8,7 @@ export type RelatedPage = {
   url: string;
   title?: string;
   snippet?: string;
+  date?: string;
 };
 
 export type RelatedRailOk = {
@@ -62,7 +63,10 @@ export function buildSearchQuery(input: { url: string; topic?: Understanding | n
   return compact([topic, ...entities, date].filter(Boolean).join(" "), 320);
 }
 
-export function normalizeRelated(raw: { url?: string; title?: string; snippet?: string }[], keepUrl: string) {
+export function normalizeRelated(
+  raw: { url?: string; title?: string; snippet?: string; date?: string }[],
+  keepUrl: string,
+) {
   const keep = canonicalizeUrl(keepUrl);
   const pages: RelatedPage[] = [];
   for (const item of raw) {
@@ -70,10 +74,12 @@ export function normalizeRelated(raw: { url?: string; title?: string; snippet?: 
     if (!url || url === keep) continue;
     const title = compact(item.title, 500);
     const snippet = compact(item.snippet, 1000);
+    const date = compact(item.date, 10);
     pages.push({
       url,
       ...(title ? { title } : {}),
       ...(snippet ? { snippet } : {}),
+      ...(date ? { date } : {}),
     });
   }
   return pages;
@@ -162,6 +168,7 @@ export function readRelatedReporting(value: unknown): RelatedPage[] | null {
         url: rec.url,
         ...(typeof rec.title === "string" && rec.title ? { title: rec.title } : {}),
         ...(typeof rec.snippet === "string" && rec.snippet ? { snippet: rec.snippet } : {}),
+        ...(typeof rec.date === "string" && rec.date ? { date: rec.date } : {}),
       },
     ];
   });

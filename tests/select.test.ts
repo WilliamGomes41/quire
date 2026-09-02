@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chosenPieces, defaultBindChoice, readBindChoice } from "../src/lib/select";
+import { chosenFromBoard, chosenPieces, defaultBindChoice, readBindChoice } from "../src/lib/select";
 import type { Clip } from "../src/lib/save";
 
 function clip(over: Partial<Clip> = {}): Clip {
@@ -18,6 +18,7 @@ function clip(over: Partial<Clip> = {}): Clip {
       { url: "https://news.example/one", title: "Harbour vote in Praia" },
       { url: "https://news.example/two", title: "Harbour vote follow-up" },
     ],
+    sourceHeadline: null,
     ...over,
   };
 }
@@ -68,5 +69,14 @@ describe("related join only when selected", () => {
         relatedUrls: ["https://example.com/kept", "https://news.example/one", "https://news.example/one"],
       }).map((p) => p.url),
     ).toEqual(["https://example.com/kept", "https://news.example/one"]);
+  });
+});
+
+describe("empty selection does not bind", () => {
+  it("yields no pieces when the original is out and no related are checked", () => {
+    expect(
+      chosenFromBoard([{ clip: clip(), choice: { includeOriginal: false, relatedUrls: [] } }]),
+    ).toEqual([]);
+    expect(chosenFromBoard([])).toEqual([]);
   });
 });

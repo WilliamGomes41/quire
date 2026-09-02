@@ -20,8 +20,8 @@ describe("dedicated search API slot", () => {
           JSON.stringify({
             web: {
               results: [
-                { url: "https://news.example/a", title: "A", description: "One" },
-                { url: "https://news.example/b", title: "B", snippet: "Two" },
+                { url: "https://news.example/a", title: "A", description: "One", page_age: "2026-09-01T08:00:00Z" },
+                { url: "https://news.example/b", title: "B", snippet: "Two", age: "2 days ago" },
               ],
             },
           }),
@@ -31,7 +31,7 @@ describe("dedicated search API slot", () => {
     });
 
     await expect(searchPages({ query: "harbour vote" })).resolves.toEqual([
-      { url: "https://news.example/a", title: "A", snippet: "One" },
+      { url: "https://news.example/a", title: "A", snippet: "One", date: "2026-09-01" },
       { url: "https://news.example/b", title: "B", snippet: "Two" },
     ]);
   });

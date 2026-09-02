@@ -7,6 +7,7 @@ import {
   type RelatedRailRecord,
 } from "./related";
 import type { Clip, ClipStore } from "./save";
+import { readSourceHeadline, type SourceHeadlineRecord } from "./source-headline";
 import { readTake } from "./take";
 import { readUnderstanding, type UnderstandingRecord } from "./understanding";
 
@@ -18,6 +19,7 @@ function clipFromRow(row: Record<string, unknown>): Clip {
     understanding: readUnderstanding(row.understanding),
     relatedRail: readRelatedRail(row.related_rail),
     relatedReporting: readRelatedReporting(row.related_reporting),
+    sourceHeadline: readSourceHeadline(row.source_headline),
   };
 }
 
@@ -34,7 +36,7 @@ export async function clipStore(): Promise<ClipStore> {
     },
     async get(id) {
       const { rows } = await db.query(
-        "select id, url, saved_at, understanding, related_rail, related_reporting from clips where id = $1",
+        "select id, url, saved_at, understanding, related_rail, related_reporting, source_headline from clips where id = $1",
         [id],
       );
       const row = rows[0];
@@ -55,13 +57,20 @@ export async function clipStore(): Promise<ClipStore> {
       }
       await db.query("update clips set related_rail = $2 where id = $1", [id, write.related_rail]);
     },
+    async persistSourceHeadline(id: string, record: SourceHeadlineRecord) {
+      await db.query("update clips set source_headline = $2 where id = $1", [id, record]);
+    },
+    async remove(id) {
+      if (!id) return;
+      await db.query("delete from clips where id = $1", [id]);
+    },
   };
 }
 
 export async function listClips(): Promise<Clip[]> {
   const db = await openDb();
   const { rows } = await db.query(
-    "select id, url, saved_at, understanding, related_rail, related_reporting from clips order by saved_at desc",
+    "select id, url, saved_at, understanding, related_rail, related_reporting, source_headline from clips order by saved_at desc",
   );
   return rows.map(clipFromRow);
 }

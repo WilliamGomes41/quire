@@ -7,6 +7,8 @@ import { relatedPersist } from "../src/lib/related";
 import { clipStore, issueStore } from "../src/lib/store";
 import type { ArticleWords } from "../src/lib/article";
 
+const quietHeadline = async () => ({ text: "" });
+
 function memoryClips(): ClipStore & { rows: Map<string, Clip> } {
   const rows = new Map<string, Clip>();
   return {
@@ -32,6 +34,14 @@ function memoryClips(): ClipStore & { rows: Map<string, Clip> } {
         relatedRail: write.related_rail,
         ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
       });
+    },
+    async persistSourceHeadline(id, record) {
+      const clip = rows.get(id);
+      if (!clip) throw new Error("missing clip");
+      rows.set(id, { ...clip, sourceHeadline: record });
+    },
+    async remove(id) {
+      rows.delete(id);
     },
   };
 }
@@ -82,6 +92,7 @@ describe("create issue binds a visible magazine page", () => {
   it("includes the original by default and keeps related out until selected", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "News",
         topic: "A harbour vote",
@@ -129,6 +140,7 @@ describe("create issue binds a visible magazine page", () => {
   it("puts the author's original words on Read, not the Keep understanding", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "News",
         topic: "A harbour vote",
@@ -153,6 +165,7 @@ describe("create issue binds a visible magazine page", () => {
   it("stays a valid page when the take is missing or failed", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "Notice",
         topic: "A harbour closure",
@@ -176,6 +189,7 @@ describe("create issue binds a visible magazine page", () => {
   it("keeps the clip when bind cannot fetch the author's words", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -196,6 +210,7 @@ describe("create issue binds a visible magazine page", () => {
   it("locks original words through PGLite and still keeps when take fails", async () => {
     const clips = await clipStore();
     const clip = await saveClip({ url: "https://example.com/pglite-bind" }, clips, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "Comment",
         topic: "A column on reading",
@@ -217,5 +232,26 @@ describe("create issue binds a visible magazine page", () => {
     expect(stored?.take).toMatchObject({ status: "failed" });
     const kept = await clips.get(clip.id);
     expect(kept?.url).toBe("https://example.com/pglite-bind");
+  });
+
+  it("does not bind an empty selection", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "Notice",
+        topic: "A harbour closure",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    await expect(
+      createIssue(
+        { clip, choice: { includeOriginal: false, relatedUrls: [] } },
+        memoryIssues(),
+        { fetchWords: async () => originalWords },
+      ),
+    ).rejects.toThrow(/Select something to bind/);
+    expect(clips.rows.has(clip.id)).toBe(true);
   });
 });

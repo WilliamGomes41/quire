@@ -8,6 +8,7 @@ export type RawPage = {
   url: string;
   title?: string;
   snippet?: string;
+  date?: string;
 };
 
 export type SearchPages = (input: { query: string }) => Promise<RawPage[]>;
@@ -48,6 +49,17 @@ export function searchFailStatus(error: unknown): SearchFailStatus {
   return failStatusOf(error);
 }
 
+/** Keep a calendar date already on the page. Do not invent one from "2 days ago". */
+export function pageDate(row: Record<string, unknown>) {
+  for (const key of ["page_age", "date", "published", "published_date"]) {
+    const value = row[key];
+    if (typeof value !== "string") continue;
+    const match = value.trim().match(/^(\d{4}-\d{2}-\d{2})/);
+    if (match) return match[1];
+  }
+  return "";
+}
+
 function readPages(payload: unknown): RawPage[] {
   if (!payload || typeof payload !== "object") {
     throw searchLookupError("failed", "Search API returned no pages.");
@@ -78,7 +90,15 @@ function readPages(payload: unknown): RawPage[] {
         : typeof row.description === "string"
           ? row.description
           : undefined;
-    return [{ url, ...(title ? { title } : {}), ...(snippet ? { snippet } : {}) }];
+    const date = pageDate(row);
+    return [
+      {
+        url,
+        ...(title ? { title } : {}),
+        ...(snippet ? { snippet } : {}),
+        ...(date ? { date } : {}),
+      },
+    ];
   });
 }
 
