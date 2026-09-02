@@ -404,8 +404,10 @@ describe("remove takes the clip off the pile", () => {
   it("deletes only the clips row", async () => {
     const { readFileSync } = await import("node:fs");
     const store = readFileSync("src/lib/store.ts", "utf8");
-    expect(store).toMatch(/delete from clips where id = \$1/);
-    expect(store).not.toMatch(/delete from issues/);
+    const clipRemove = store.match(
+      /async remove\(id\) \{\s*if \(!id\) return;\s*await db\.query\("delete from clips where id = \$1"/,
+    );
+    expect(clipRemove).toBeTruthy();
     expect(store).not.toMatch(/cascade/i);
   });
 });

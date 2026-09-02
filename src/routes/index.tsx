@@ -17,15 +17,25 @@ import {
   nothingSelected,
   productName,
   readLine,
+  removeIssueAsk,
   removeLabel,
+  removePiecesTooLabel,
+  returnToDeskLabel,
   sourceHeadlineCopy,
   sourceLabel,
 } from "../copy";
-import { createIssue } from "../lib/bind";
+import { createIssue, type BoundIssue } from "../lib/bind";
 import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../lib/kept";
 import { saveClip, type Clip } from "../lib/save";
 import { chosenFromBoard, chosenPieces, defaultBindChoice, type BindChoice } from "../lib/select";
-import { clipStore, issueStore, listClips, listIssues } from "../lib/store";
+import {
+  clipStore,
+  deleteBoundIssue,
+  issueStore,
+  listClips,
+  listIssues,
+  takeBoundOffDesk,
+} from "../lib/store";
 import { resolveSearchPages } from "../lib/search";
 import { runGrokUnderstanding } from "../lib/understanding";
 
@@ -65,6 +75,7 @@ const bindIssue = createServerFn({ method: "POST" })
       });
     }
     const issue = await createIssue({ items }, await issueStore());
+    await takeBoundOffDesk(issue.pieces.map((piece) => piece.url));
     return { note: boundNote, id: issue.id };
   });
 
@@ -73,6 +84,12 @@ const removeKept = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const store = await clipStore();
     await store.remove(data.id);
+  });
+
+const removeBound = createServerFn({ method: "POST" })
+  .validator((data: { id: string; pieces: "return" | "discard" }) => data)
+  .handler(async ({ data }) => {
+    await deleteBoundIssue(data.id, data.pieces);
   });
 
 export const Route = createFileRoute("/")({
@@ -197,17 +214,69 @@ function Home() {
           <ul className="covers">
             {issues.map((issue) => (
               <li key={issue.id}>
-                <Link className="cover" to="/read/$id" params={{ id: issue.id }}>
-                  <span className="kicker">Issue</span>
-                  <strong className="display">{issue.title}</strong>
-                  <span className="empty">{issue.pieces.length === 1 ? "One piece" : `${issue.pieces.length} pieces`}</span>
-                </Link>
+                <BoundCover
+                  issue={issue}
+                  onRemove={(pieces) =>
+                    removeBound({ data: { id: issue.id, pieces } }).then(() => router.invalidate())
+                  }
+                />
               </li>
             ))}
           </ul>
         )}
       </section>
     </main>
+  );
+}
+
+function BoundCover({
+  issue,
+  onRemove,
+}: {
+  issue: BoundIssue;
+  onRemove: (pieces: "return" | "discard") => Promise<void>;
+}) {
+  const [asking, setAsking] = useState(false);
+  const [error, setError] = useState("");
+
+  function choose(pieces: "return" | "discard") {
+    setError("");
+    onRemove(pieces).then(
+      () => undefined,
+      (cause: unknown) => {
+        setError(cause instanceof Error ? cause.message : "Could not remove this issue.");
+      },
+    );
+  }
+
+  return (
+    <article>
+      <Link className="cover" to="/read/$id" params={{ id: issue.id }}>
+        <span className="kicker">Issue</span>
+        <strong className="display">{issue.title}</strong>
+        <span className="empty">{issue.pieces.length === 1 ? "One piece" : `${issue.pieces.length} pieces`}</span>
+      </Link>
+      {asking ? (
+        <>
+          <p className="empty">{removeIssueAsk}</p>
+          <p className="actions">
+            <button type="button" className="quiet" onClick={() => choose("return")}>
+              {returnToDeskLabel}
+            </button>
+            <button type="button" className="quiet" onClick={() => choose("discard")}>
+              {removePiecesTooLabel}
+            </button>
+          </p>
+        </>
+      ) : (
+        <p className="actions">
+          <button type="button" className="quiet" onClick={() => setAsking(true)}>
+            {removeLabel}
+          </button>
+        </p>
+      )}
+      {error ? <p className="fail">{error}</p> : null}
+    </article>
   );
 }
 

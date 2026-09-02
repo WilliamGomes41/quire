@@ -4,7 +4,7 @@ import { createIssue, type BoundIssue, type IssueStore } from "../src/lib/bind";
 import { resetMemoryDb } from "../src/lib/db";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
 import { relatedPersist } from "../src/lib/related";
-import { clipStore, issueStore } from "../src/lib/store";
+import { clipStore, issueStore, listClips, takeBoundOffDesk } from "../src/lib/store";
 import type { ArticleWords } from "../src/lib/article";
 
 const quietHeadline = async () => ({ text: "" });
@@ -56,6 +56,9 @@ function memoryIssues(): IssueStore & { rows: Map<string, BoundIssue> } {
     },
     async get(id) {
       return rows.get(id) ?? null;
+    },
+    async remove(id) {
+      rows.delete(id);
     },
   };
 }
@@ -237,8 +240,9 @@ describe("create issue binds a visible magazine page", () => {
     const stored = await (await issueStore()).get(issue.id);
     expect(stored?.pieces[0]?.paragraphs).toEqual(originalWords.paragraphs);
     expect(stored?.take).toMatchObject({ status: "failed" });
-    const kept = await clips.get(clip.id);
-    expect(kept?.url).toBe("https://example.com/pglite-bind");
+    await takeBoundOffDesk(issue.pieces.map((piece) => piece.url));
+    expect(await clips.get(clip.id)).toBeNull();
+    expect((await listClips()).map((row) => row.id)).not.toContain(clip.id);
   });
 
   it("round-trips a source-owned cover line already on the bound piece", async () => {
