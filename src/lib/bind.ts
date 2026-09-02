@@ -31,6 +31,7 @@ export type BoundIssue = {
 export type IssueStore = {
   insert: (issue: BoundIssue) => Promise<BoundIssue>;
   get: (id: string) => Promise<BoundIssue | null>;
+  remove: (id: string) => Promise<void>;
 };
 
 export type CreateIssueOptions = {

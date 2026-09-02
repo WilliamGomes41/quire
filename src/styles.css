@@ -217,6 +217,11 @@ nav {
   margin: 0;
 }
 
+.covers .actions {
+  flex-wrap: wrap;
+  margin-top: 0.35rem;
+}
+
 .source {
   font-size: 0.85rem;
   width: fit-content;

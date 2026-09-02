@@ -42,6 +42,12 @@ export const sourceLabel = "Source";
 
 export const removeLabel = "Remove";
 
+export const removeIssueAsk = "Return the pieces to Desk, or remove them too?";
+
+export const returnToDeskLabel = "Return the pieces to Desk.";
+
+export const removePiecesTooLabel = "Remove the pieces too.";
+
 export const readLine = "Read the bound issue.";
 
 export const contentsKicker = "In this issue";

@@ -13,7 +13,10 @@ import {
   nothingMoreOnTopic,
   originalInByDefault,
   readLine,
+  removeIssueAsk,
   removeLabel,
+  removePiecesTooLabel,
+  returnToDeskLabel,
   sourceHeadlineCopy,
   sourceLabel,
   takeLabel,
@@ -31,6 +34,9 @@ describe("product voice", () => {
     expect(createIssueLabel).toBe("Create issue");
     expect(sourceLabel).toBe("Source");
     expect(removeLabel).toBe("Remove");
+    expect(removeIssueAsk).toMatch(/Return the pieces to Desk/);
+    expect(returnToDeskLabel).toBe("Return the pieces to Desk.");
+    expect(removePiecesTooLabel).toBe("Remove the pieces too.");
     expect(readLine).toMatch(/bound issue/i);
     expect(contentsKicker).toBe("In this issue");
     expect(originalInByDefault).toMatch(/unless you take it out/);
@@ -48,6 +54,9 @@ describe("product voice", () => {
       nothingMoreOnTopic,
       couldNotLook,
       createIssueLabel,
+      removeIssueAsk,
+      returnToDeskLabel,
+      removePiecesTooLabel,
       readLine,
       takeLabel,
       boundEmpty,

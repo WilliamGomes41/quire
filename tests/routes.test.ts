@@ -118,6 +118,24 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/lucide-react|Trash2|sonner/);
   });
 
+  it("puts quiet Remove on each bound-issue card and asks about the pieces", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/BoundCover/);
+    expect(keep).toMatch(/removeBound/);
+    expect(keep).toMatch(/deleteBoundIssue/);
+    expect(keep).toMatch(/takeBoundOffDesk/);
+    expect(keep).toMatch(/returnToDeskLabel/);
+    expect(keep).toMatch(/removePiecesTooLabel/);
+    expect(keep).toMatch(/removeIssueAsk/);
+    expect(keep).toMatch(/className="quiet"/);
+    expect(keep).toMatch(
+      /removeBound\(\{ data: \{ id: issue\.id, pieces \} \}\)\.then\(\(\) => router\.invalidate\(\)\)/,
+    );
+    expect(keep).not.toMatch(/lucide-react|Trash2|sonner|AlertDialog/);
+    expect(keep).not.toMatch(/\/clips\/\$/);
+    expect(keep).not.toMatch(/\bPress\b/);
+  });
+
   it("uses one Create issue for the board and does not bind an empty selection", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep.match(/createIssueLabel/g)?.length).toBe(2);

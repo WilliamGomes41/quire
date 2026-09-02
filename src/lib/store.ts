@@ -1,6 +1,6 @@
 import { openDb } from "./db";
 import type { BoundIssue, BoundPiece, IssueStore } from "./bind";
-import { isPublicHttpUrl } from "./article";
+import { canonicalizeUrl, isPublicHttpUrl } from "./article";
 import {
   readRelatedRail,
   readRelatedReporting,
@@ -133,6 +133,10 @@ export async function issueStore(): Promise<IssueStore> {
       if (!row) return null;
       return issueFromRow(row);
     },
+    async remove(id) {
+      if (!id) return;
+      await db.query("delete from issues where id = $1", [id]);
+    },
   };
 }
 
@@ -142,4 +146,67 @@ export async function listIssues(): Promise<BoundIssue[]> {
     "select id, created_at, title, lead_url, take, pieces from issues order by created_at desc",
   );
   return rows.map(issueFromRow);
+}
+
+function urlKey(url: string) {
+  return canonicalizeUrl(url);
+}
+
+/** A bound piece is not on Desk. Bind takes matching clips off the pile. */
+export async function takeBoundOffDesk(urls: string[]): Promise<void> {
+  const keys = new Set(urls.map(urlKey).filter(Boolean));
+  if (keys.size === 0) return;
+  const store = await clipStore();
+  for (const clip of await listClips()) {
+    if (keys.has(urlKey(clip.url))) {
+      await store.remove(clip.id);
+    }
+  }
+}
+
+/** Return locked pieces as Desk clips. Persist first. Do not run Keep again. */
+export async function returnPiecesToDesk(pieces: BoundPiece[]): Promise<void> {
+  const have = new Set((await listClips()).map((clip) => urlKey(clip.url)).filter(Boolean));
+  const store = await clipStore();
+  for (const piece of pieces) {
+    const key = urlKey(piece.url);
+    if (!key || have.has(key)) continue;
+    have.add(key);
+    const clip = await store.insert({
+      id: crypto.randomUUID(),
+      url: piece.url,
+      savedAt: new Date().toISOString(),
+      understanding: null,
+      relatedRail: null,
+      relatedReporting: null,
+      sourceHeadline: null,
+    });
+    const headline = piece.headline.trim();
+    if (!headline) continue;
+    try {
+      await store.persistSourceHeadline(clip.id, {
+        status: "ok",
+        text: headline,
+        ...(piece.figure ? { figure: piece.figure } : {}),
+      });
+    } catch {
+      // The clip row stands.
+    }
+  }
+}
+
+export async function deleteBoundIssue(
+  id: string,
+  pieces: "return" | "discard",
+): Promise<void> {
+  if (!id) return;
+  const issues = await issueStore();
+  const issue = await issues.get(id);
+  if (!issue) return;
+  if (pieces === "return") {
+    await returnPiecesToDesk(issue.pieces);
+  } else {
+    await takeBoundOffDesk(issue.pieces.map((piece) => piece.url));
+  }
+  await issues.remove(id);
 }

@@ -20,6 +20,8 @@ Then Select → Create issue → Read. An issue is whatever you choose to bind. 
 
 Create issue fetches the author's original words and locks them. Magazine is that bound issue — a readable sheet, not a restyle of a URL list. Cards open that page. People read on the site: one floating paper sheet at a time on a binding-cloth stage (cover, then contents, then the sequence). Not a stacked paper webpage. Not a two-page spread. Not a PDF viewer. App chrome sits on the cloth, not on the paper. Original words are recomposed on the sheet. The cover does not print product copy as a kicker. A cover kicker appears only when bind already has a source-owned cover line — not `understanding.topic`, not the take, not an invented dek. A take may sit as unlabeled italic between hairlines. It is optional. It is not a TL;DR kicker. The page still reads if the take is missing. The folio is not the raw source URL.
 
+A bound-issue card has quiet Remove, same register as Select. Deleting asks whether to return the pieces to Desk or remove them too. A bound piece is not on Desk until it is returned. Bind takes it off Desk again. The issue list may be empty.
+
 Search failure, understanding failure, a failed take, or a failed bind do not fail Keep.
 
 Canonical law lives in [quire-bind PROTOCOL.md @ 444e429](https://github.com/WilliamGomes41/quire-bind/blob/444e4299778d0297a889675426e45f87a66fb88f/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
