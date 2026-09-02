@@ -31,6 +31,11 @@ function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
         ...("related_reporting" in write ? { relatedReporting: write.related_reporting ?? null } : {}),
       });
     },
+    async persistSourceHeadline(id, record) {
+      const clip = rows.get(id);
+      if (!clip) throw new Error("missing clip");
+      rows.set(id, { ...clip, sourceHeadline: record });
+    },
     async remove(id) {
       rows.delete(id);
     },
@@ -38,12 +43,21 @@ function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
 }
 
 const quietSearch = async () => [];
+const quietHeadline = async () => ({ text: "" });
 
 describe("Keep is not bind", () => {
   it("does not call bind or read from the Keep path", async () => {
     const { readFileSync } = await import("node:fs");
     const save = readFileSync("src/lib/save.ts", "utf8");
     expect(save).not.toMatch(/createIssue|composeIssue|runGrokTake|fetchArticleWords/);
+  });
+
+  it("attempts to persist a source headline from the fetch", async () => {
+    const { readFileSync } = await import("node:fs");
+    const save = readFileSync("src/lib/save.ts", "utf8");
+    expect(save).toMatch(/persistSourceHeadline/);
+    expect(save).toMatch(/runSourceHeadline/);
+    expect(save).not.toMatch(/web_search/);
   });
 });
 
@@ -58,6 +72,7 @@ describe("Keep always saves", () => {
   it("persists the clip when understanding throws", async () => {
     const store = memoryStore();
     const clip = await saveClip({ url: "https://example.com/kept" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -71,6 +86,7 @@ describe("Keep always saves", () => {
   it("persists a visible understanding fail instead of swallowing it", async () => {
     const store = memoryStore();
     const clip = await saveClip({ url: "https://example.com/fail-record" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -92,6 +108,7 @@ describe("Keep always saves", () => {
     const store = memoryStore();
     let sawRow = false;
     await saveClip({ url: "https://example.com/order" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         sawRow = store.rows.size === 1;
         throw new Error("after persist");
@@ -110,6 +127,7 @@ describe("Keep always saves", () => {
       date: "2026-09-01",
     };
     const clip = await saveClip({ url: "https://example.com/ok" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => understood,
       searchPages: quietSearch,
     });
@@ -120,6 +138,7 @@ describe("Keep always saves", () => {
   it("persists through PGLite when understanding throws, with a fail record", async () => {
     const store = await clipStore();
     const clip = await saveClip({ url: "https://example.com/pglite" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("grok failed");
       },
@@ -136,6 +155,7 @@ describe("Keep always saves", () => {
   it("still keeps when default Grok understanding cannot run", async () => {
     const store = await clipStore();
     const clip = await saveClip({ url: "https://example.com/no-key" }, store, {
+      readHeadline: quietHeadline,
       searchPages: quietSearch,
     });
     const stored = await store.get(clip.id);
@@ -152,6 +172,7 @@ describe("Keep always saves", () => {
       throw new Error("diagnostic write failed");
     };
     const clip = await saveClip({ url: "https://example.com/keep-stands" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -176,6 +197,7 @@ describe("understanding fail is not an empty catch", () => {
     };
 
     await saveClip({ url: "https://example.com/visible" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("could not understand");
       },
@@ -195,6 +217,7 @@ describe("Keep still persists when search throws", () => {
   it("writes the clip and a rail fail, not related_reporting", async () => {
     const store = memoryStore();
     const clip = await saveClip({ url: "https://example.com/search-throws" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "News",
         topic: "A harbour vote",
@@ -219,6 +242,7 @@ describe("Keep still persists when search throws", () => {
   it("does not write related_reporting on PGLite when search throws", async () => {
     const store = await clipStore();
     const clip = await saveClip({ url: "https://example.com/pglite-search" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "Comment",
         topic: "A column on reading",
@@ -240,6 +264,7 @@ describe("Keep still persists when search throws", () => {
       throw new Error("rail write failed");
     };
     const clip = await saveClip({ url: "https://example.com/rail-write" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "Study",
         topic: "A paper",
@@ -261,6 +286,7 @@ describe("successful retrieval writes related_reporting", () => {
   it("persists ok pages and ok+0 distinctly from fail", async () => {
     const store = memoryStore();
     const withPages = await saveClip({ url: "https://example.com/with-pages" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "News",
         topic: "A harbour vote",
@@ -275,6 +301,7 @@ describe("successful retrieval writes related_reporting", () => {
     expect(withPages.relatedReporting).toHaveLength(2);
 
     const empty = await saveClip({ url: "https://example.com/empty-topic" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "Notice",
         topic: "A harbour closure",
@@ -298,6 +325,7 @@ describe("successful retrieval writes related_reporting", () => {
       });
     };
     await saveClip({ url: "https://example.com/fail-write" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => ({
         contentType: "News",
         topic: "A harbour vote",
@@ -322,12 +350,14 @@ describe("remove takes the clip off the pile", () => {
   it("drops the clip from listClips and still lets Keep save", async () => {
     const store = await clipStore();
     const first = await saveClip({ url: "https://example.com/first" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
       searchPages: quietSearch,
     });
     const second = await saveClip({ url: "https://example.com/second" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -342,6 +372,7 @@ describe("remove takes the clip off the pile", () => {
     expect(await store.get(first.id)).toBeNull();
 
     const third = await saveClip({ url: "https://example.com/third" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -361,6 +392,7 @@ describe("remove takes the clip off the pile", () => {
     await expect(store.remove("missing-clip")).resolves.toBeUndefined();
     await expect(store.remove("")).resolves.toBeUndefined();
     const kept = await saveClip({ url: "https://example.com/after-missing" }, store, {
+      readHeadline: quietHeadline,
       understand: async () => {
         throw new Error("model down");
       },
@@ -375,5 +407,104 @@ describe("remove takes the clip off the pile", () => {
     expect(store).toMatch(/delete from clips where id = \$1/);
     expect(store).not.toMatch(/delete from issues/);
     expect(store).not.toMatch(/cascade/i);
+  });
+});
+
+describe("Keep persists a source headline fail-closed", () => {
+  afterEach(() => {
+    resetMemoryDb();
+    delete process.env.XAI_API_KEY;
+    delete process.env.SEARCH_API_KEY;
+  });
+
+  it("stores og:title when the fetch has one, and still keeps when it cannot", async () => {
+    const store = memoryStore();
+    const withTitle = await saveClip({ url: "https://example.com/headline" }, store, {
+      readHeadline: async () => ({
+        text: "The harbour vote",
+        snippet: "The assembly met at dusk in Praia.",
+      }),
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect(withTitle.sourceHeadline).toEqual({
+      status: "ok",
+      text: "The harbour vote",
+      snippet: "The assembly met at dusk in Praia.",
+    });
+    expect(store.rows.get(withTitle.id)?.url).toBe("https://example.com/headline");
+
+    const empty = await saveClip({ url: "https://example.com/no-title" }, store, {
+      readHeadline: async () => ({ text: "" }),
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect(empty.sourceHeadline).toEqual({ status: "empty" });
+    expect(empty.sourceHeadline?.status).not.toBe("failed");
+
+    const failed = await saveClip({ url: "https://example.com/headline-fail" }, store, {
+      readHeadline: async () => {
+        throw new Error("fetch down");
+      },
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect(failed.sourceHeadline).toMatchObject({
+      status: "failed",
+      message: "fetch down",
+    });
+    expect(failed.sourceHeadline?.status).not.toBe("empty");
+    expect(store.rows.has(failed.id)).toBe(true);
+  });
+
+  it("does not roll back Keep when persist of the headline fail throws", async () => {
+    const store = memoryStore();
+    store.persistSourceHeadline = async () => {
+      throw new Error("headline write failed");
+    };
+    const clip = await saveClip({ url: "https://example.com/headline-write" }, store, {
+      readHeadline: async () => {
+        throw new Error("fetch down");
+      },
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect(store.rows.has(clip.id)).toBe(true);
+    expect(clip.sourceHeadline).toMatchObject({
+      status: "failed",
+      message: "fetch down",
+    });
+  });
+
+  it("persists ok, empty, and fail through PGLite without blocking Keep", async () => {
+    const store = await clipStore();
+    const ok = await saveClip({ url: "https://example.com/pglite-headline" }, store, {
+      readHeadline: async () => ({ text: "The harbour vote" }),
+      understand: async () => {
+        throw new Error("grok failed");
+      },
+      searchPages: quietSearch,
+    });
+    expect((await store.get(ok.id))?.sourceHeadline).toEqual({
+      status: "ok",
+      text: "The harbour vote",
+    });
+
+    const empty = await saveClip({ url: "https://example.com/pglite-empty-headline" }, store, {
+      readHeadline: async () => ({ text: "" }),
+      understand: async () => {
+        throw new Error("grok failed");
+      },
+      searchPages: quietSearch,
+    });
+    expect((await store.get(empty.id))?.sourceHeadline).toEqual({ status: "empty" });
   });
 });

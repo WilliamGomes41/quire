@@ -54,6 +54,20 @@ export const nothingSelected = "Select something to bind. An issue is what you c
 
 export const couldNotFetchWords = "Could not fetch the author's words.";
 
+export const couldNotReadHeadline = "Could not read a headline from the source.";
+
+export const noHeadlineOnSource = "No headline on the source.";
+
+export function sourceHeadlineCopy(input: { status: "ok" | "empty" | "failed" }) {
+  if (input.status === "ok") {
+    return { kind: "ok" as const, text: "" };
+  }
+  if (input.status === "empty") {
+    return { kind: "empty" as const, text: noHeadlineOnSource };
+  }
+  return { kind: "fail" as const, text: couldNotReadHeadline };
+}
+
 export function moreOnThisTopicCopy(input: {
   status: "ok" | "failed" | "unconfigured" | "timeout";
   count: number;

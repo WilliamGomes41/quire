@@ -54,3 +54,22 @@ export function chosenPieces(clip: Clip, choice?: Partial<BindChoice> | null): C
 
   return pieces;
 }
+
+export type BoardItem = {
+  clip: Clip;
+  choice?: Partial<BindChoice> | null;
+};
+
+export function chosenFromBoard(items: BoardItem[]): ChosenPiece[] {
+  const seen = new Set<string>();
+  const pieces: ChosenPiece[] = [];
+  for (const item of items) {
+    for (const piece of chosenPieces(item.clip, item.choice)) {
+      const key = canonicalizeUrl(piece.url);
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      pieces.push(piece);
+    }
+  }
+  return pieces;
+}

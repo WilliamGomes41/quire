@@ -28,6 +28,10 @@ const addRelatedReporting = `
 alter table clips add column if not exists related_reporting jsonb;
 `;
 
+const addSourceHeadline = `
+alter table clips add column if not exists source_headline jsonb;
+`;
+
 const createIssues = `
 create table if not exists issues (
   id text primary key,
@@ -59,6 +63,7 @@ export async function openDb(): Promise<Queryable> {
     await queryable.query(addUnderstanding);
     await queryable.query(addRelatedRail);
     await queryable.query(addRelatedReporting);
+    await queryable.query(addSourceHeadline);
     await queryable.query(createIssues);
     return queryable;
   }
@@ -66,7 +71,7 @@ export async function openDb(): Promise<Queryable> {
   if (!memory) {
     memory = new PGlite();
     await memory.exec(
-      `${createClips}${addUnderstanding}${addRelatedRail}${addRelatedReporting}${createIssues}`,
+      `${createClips}${addUnderstanding}${addRelatedRail}${addRelatedReporting}${addSourceHeadline}${createIssues}`,
     );
   }
   return {

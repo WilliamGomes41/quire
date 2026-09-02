@@ -231,6 +231,20 @@ button:disabled {
   align-items: flex-start;
 }
 
+.choice.include {
+  align-items: flex-start;
+}
+
+.choice.include .tile {
+  display: grid;
+  gap: 0.35rem;
+  cursor: pointer;
+}
+
+.card.in {
+  border-color: color-mix(in srgb, var(--binding) 28%, var(--paper));
+}
+
 .page {
   max-width: 68rem;
   margin: 0 auto;

@@ -65,7 +65,6 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/<a href=\{clip\.url\}>\{clip\.url\}<\/a>/);
     expect(keep).toMatch(/keptHeading\(clip\)/);
     expect(keep).toMatch(/<h3 className="display">\{heading\}<\/h3>/);
-    expect(keep).toMatch(/hostnameOf\(clip\.url\)/);
     expect(keep).not.toMatch(/to=["']\/clips\/\$clipId["']/);
     expect(keep).not.toMatch(/\/clips\/\$/);
   });
@@ -93,16 +92,14 @@ describe("kept card does not leak to the source", () => {
     expect(keep).toMatch(/type="checkbox"/);
     expect(keep).toMatch(/relatedRow\(page\)/);
     expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
-    expect(keep).toMatch(/row\.host/);
-    expect(keep).toMatch(/row\.snippet/);
     expect(keep).not.toMatch(/<a href=\{page\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
   });
 
-  it("shows the stored related snippet and host on the Select row", () => {
+  it("shows the stored related snippet, or publisher when there is no snippet", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).toMatch(/\{row\.host \? <span className="folio">\{row\.host\}<\/span> : null\}/);
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
+    expect(keep).toMatch(/\{row\.detail \? <span className="folio">\{row\.detail\}<\/span> : null\}/);
     expect(keep).not.toMatch(/runRelatedReporting|searchPages\(\{ query/);
   });
 
@@ -115,6 +112,21 @@ describe("kept card does not leak to the source", () => {
     expect(keep).toMatch(/className="quiet"/);
     expect(keep).toMatch(/removeKept\(\{ data: \{ id: clip\.id \} \}\)\.then\(\(\) => router\.invalidate\(\)\)/);
     expect(keep).not.toMatch(/lucide-react|Trash2|sonner/);
+  });
+
+  it("uses one Create issue for the board and does not bind an empty selection", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep.match(/createIssueLabel/g)?.length).toBe(2);
+    expect(keep).toMatch(/chosenFromBoard\(board\)/);
+    expect(keep).toMatch(/nothingSelected/);
+    expect(keep).toMatch(/selections:/);
+    expect(keep).not.toMatch(/onBind/);
+    expect(keep).toMatch(/\/read\/\$id/);
+  });
+
+  it("hides the Select sermons on the tiles", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).not.toMatch(/selectLine|originalInByDefault|suggestionsUntilSelected|relatedJoinWhenSelected/);
   });
 
   it("keeps the Select board as two-column paper tiles on a wide viewport", () => {

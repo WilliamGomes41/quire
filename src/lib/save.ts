@@ -9,6 +9,13 @@ import {
 } from "./related";
 import { resolveSearchPages, type SearchPages } from "./search";
 import {
+  runSourceHeadline,
+  sourceHeadlineFail,
+  sourceHeadlineRecord,
+  type SourceHeadlineFound,
+  type SourceHeadlineRecord,
+} from "./source-headline";
+import {
   runGrokUnderstanding,
   understandingFail,
   type Understanding,
@@ -22,6 +29,7 @@ export type Clip = {
   understanding: UnderstandingRecord | null;
   relatedRail: RelatedRailFail | { status: "ok" } | null;
   relatedReporting: RelatedPage[] | null;
+  sourceHeadline: SourceHeadlineRecord | null;
 };
 
 export type ClipStore = {
@@ -29,12 +37,14 @@ export type ClipStore = {
   get: (id: string) => Promise<Clip | null>;
   persistUnderstanding: (id: string, record: UnderstandingRecord) => Promise<void>;
   persistRelated: (id: string, record: RelatedRailRecord) => Promise<void>;
+  persistSourceHeadline: (id: string, record: SourceHeadlineRecord) => Promise<void>;
   remove: (id: string) => Promise<void>;
 };
 
 export type SaveOptions = {
   understand?: (input: { url: string }) => Promise<Understanding>;
   searchPages?: SearchPages;
+  readHeadline?: (input: { url: string }) => Promise<SourceHeadlineFound>;
 };
 
 function newId() {
@@ -46,12 +56,14 @@ function emptyClipFields() {
     understanding: null,
     relatedRail: null,
     relatedReporting: null,
+    sourceHeadline: null,
   };
 }
 
 /**
- * Keep always saves. Persist first, then one Grok understanding, then the search rail.
- * Search failure does not fail Keep. PROTOCOL §3 / §4 / §9.
+ * Keep always saves. Persist first, then a source headline from the fetch,
+ * then one Grok understanding, then the search rail.
+ * Headline and search failure do not fail Keep. PROTOCOL §3 / §4 / §9.
  */
 export async function saveClip(
   input: { url: string },
@@ -69,6 +81,21 @@ export async function saveClip(
     savedAt: new Date().toISOString(),
     ...emptyClipFields(),
   });
+
+  let headline: SourceHeadlineRecord | null = null;
+  try {
+    headline = options?.readHeadline
+      ? sourceHeadlineRecord(await options.readHeadline({ url: clip.url }))
+      : await runSourceHeadline({ url: clip.url });
+    await store.persistSourceHeadline(clip.id, headline);
+  } catch (error) {
+    headline = sourceHeadlineFail(error);
+    try {
+      await store.persistSourceHeadline(clip.id, headline);
+    } catch {
+      // Keep stands. The fail still returns on the clip below.
+    }
+  }
 
   const understand = options?.understand ?? runGrokUnderstanding;
   let record: UnderstandingRecord | null = null;
@@ -110,6 +137,9 @@ export async function saveClip(
   }
 
   let next = stored;
+  if (!stored.sourceHeadline && headline) {
+    next = { ...next, sourceHeadline: headline };
+  }
   if (!stored.understanding && record) {
     next = { ...next, understanding: record };
   }

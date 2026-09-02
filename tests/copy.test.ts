@@ -14,6 +14,7 @@ import {
   originalInByDefault,
   readLine,
   removeLabel,
+  sourceHeadlineCopy,
   sourceLabel,
   takeLabel,
 } from "../src/copy";
@@ -60,5 +61,13 @@ describe("product voice", () => {
     expect(moreOnThisTopicCopy({ status: "failed", count: 0 }).text).toBe(couldNotLook);
     expect(moreOnThisTopicCopy({ status: "unconfigured", count: 0 }).text).toBe(couldNotLook);
     expect(moreOnThisTopicCopy({ status: "timeout", count: 0 }).text).toBe(couldNotLook);
+  });
+
+  it("keeps headline empty copy off the headline-fail sentence", () => {
+    expect(sourceHeadlineCopy({ status: "empty" }).text).toBe("No headline on the source.");
+    expect(sourceHeadlineCopy({ status: "failed" }).text).toBe("Could not read a headline from the source.");
+    expect(sourceHeadlineCopy({ status: "empty" }).text).not.toBe(
+      sourceHeadlineCopy({ status: "failed" }).text,
+    );
   });
 });
