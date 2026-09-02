@@ -83,6 +83,42 @@ describe("Read composition", () => {
     expect(page.sequence.map((sheet) => sheet.folio)).toEqual(["03", "04"]);
     expect(JSON.stringify(page.cover)).not.toMatch(/https:\/\/example\.com\/kept/);
     expect(page.contents.rows.every((row) => !row.folio.includes("http"))).toBe(true);
+    expect(page.cover.kicker).toBeUndefined();
+    expect(JSON.stringify(page.cover)).not.toMatch(/A personal press/);
+    expect(page.contents.kicker).toBe("In this issue");
+    expect(page.cover.masthead).toBe("Quire");
+  });
+
+  it("omits the cover kicker unless bind already has a source-owned cover line", () => {
+    const page = composeIssue({
+      ...issue,
+      take: { status: "ok", text: "A quiet count in Praia." },
+      title: "A harbour vote",
+    });
+    expect(page.cover.kicker).toBeUndefined();
+    expect(page.cover.kicker).not.toBe("A personal press");
+    expect(JSON.stringify(page.cover)).not.toMatch(/A personal press/);
+    expect(JSON.stringify(page.cover)).not.toMatch(/A quiet count in Praia/);
+    expect(page.cover.title).toBe("A harbour vote");
+    expect(page.take).toEqual({ text: "A quiet count in Praia." });
+    expect(page.contents.kicker).toBe("In this issue");
+    expect(page.cover.masthead).toBe("Quire");
+
+    const withLine = composeIssue({
+      ...issue,
+      take: { status: "ok", text: "A quiet count in Praia." },
+      pieces: [
+        {
+          ...issue.pieces[0]!,
+          coverLine: "Praia dispatch",
+        },
+      ],
+    });
+    expect(withLine.cover.kicker).toBe("Praia dispatch");
+    expect(withLine.cover.kicker).not.toBe("A personal press");
+    expect(withLine.cover.kicker).not.toBe(withLine.take?.text);
+    expect(withLine.contents.kicker).toBe("In this issue");
+    expect(withLine.cover.masthead).toBe("Quire");
   });
 
   it("keeps photographs at contain unless Intent already says cover", () => {

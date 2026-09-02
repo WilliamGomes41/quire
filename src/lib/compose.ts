@@ -4,7 +4,7 @@
  * Original words stay the author's. Plan is derived at read time. PROTOCOL §6.
  */
 
-import { contentsKicker, kicker, productName } from "../copy";
+import { contentsKicker, productName } from "../copy";
 import type { BoundIssue, BoundPiece } from "./bind";
 import { leadPiece } from "./bind";
 import { designIntent, type DesignIntent } from "./design";
@@ -41,7 +41,7 @@ export type PagePlan = {
   secondary: PageLead[];
   cover: {
     masthead: string;
-    kicker: string;
+    kicker?: string;
     title: string;
     lead: string;
     meta: string;
@@ -77,6 +77,15 @@ function boundMeta(iso: string) {
 function asFigure(url: string | undefined, fit: FigureFit): SheetFigure | undefined {
   if (!url) return undefined;
   return { url, fit };
+}
+
+/**
+ * Cover kicker only when bind already locked a source-owned line.
+ * Product copy.kicker, understanding.topic, take, and an invented dek are not substitutes.
+ */
+export function sourceOwnedCoverLine(issue: BoundIssue): string | undefined {
+  const line = leadPiece(issue.pieces)?.coverLine?.trim();
+  return line || undefined;
 }
 
 function asLead(piece: BoundPiece): PageLead {
@@ -132,6 +141,7 @@ export function composeIssue(issue: BoundIssue): PagePlan {
 
   const title = issue.title || lead.headline;
   const coverFigure = asFigure(lead.figure, leadIntent.figure_fit);
+  const coverKicker = sourceOwnedCoverLine(issue);
 
   return {
     title,
@@ -141,10 +151,10 @@ export function composeIssue(issue: BoundIssue): PagePlan {
     secondary,
     cover: {
       masthead: productName,
-      kicker,
       title,
       lead: lead.headline,
       meta: boundMeta(issue.createdAt),
+      ...(coverKicker ? { kicker: coverKicker } : {}),
       ...(coverFigure ? { figure: coverFigure } : {}),
     },
     contents: {

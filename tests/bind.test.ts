@@ -160,6 +160,13 @@ describe("create issue binds a visible magazine page", () => {
     expect(clip.understanding && clip.understanding.status === "ok" ? clip.understanding.topic : "").toBe(
       "A harbour vote",
     );
+    expect(issue.pieces[0]?.coverLine).toBeUndefined();
+    expect(page.cover.kicker).toBeUndefined();
+    expect(JSON.stringify(page.cover)).not.toMatch(/A personal press/);
+    expect(JSON.stringify(page.cover)).not.toMatch(/A harbour vote/);
+    expect(JSON.stringify(page.cover)).not.toMatch(/A take beside the piece/);
+    expect(page.contents.kicker).toBe("In this issue");
+    expect(page.cover.masthead).toBe("Quire");
   });
 
   it("stays a valid page when the take is missing or failed", async () => {
@@ -232,6 +239,34 @@ describe("create issue binds a visible magazine page", () => {
     expect(stored?.take).toMatchObject({ status: "failed" });
     const kept = await clips.get(clip.id);
     expect(kept?.url).toBe("https://example.com/pglite-bind");
+  });
+
+  it("round-trips a source-owned cover line already on the bound piece", async () => {
+    const stored = await (
+      await issueStore()
+    ).insert({
+      id: "issue-cover-line",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [
+        {
+          url: "https://example.com/kept",
+          role: "original",
+          headline: "The harbour vote",
+          paragraphs: ["The assembly met at dusk in Praia."],
+          coverLine: "Praia dispatch",
+        },
+      ],
+    });
+    const got = await (await issueStore()).get(stored.id);
+    expect(got?.pieces[0]?.coverLine).toBe("Praia dispatch");
+    const page = composeIssue(got!);
+    expect(page.cover.kicker).toBe("Praia dispatch");
+    expect(page.cover.kicker).not.toBe("A personal press");
+    expect(page.contents.kicker).toBe("In this issue");
+    expect(page.cover.masthead).toBe("Quire");
   });
 
   it("does not bind an empty selection", async () => {

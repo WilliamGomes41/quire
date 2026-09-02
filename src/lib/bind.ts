@@ -15,6 +15,8 @@ export type BoundPiece = {
   headline: string;
   paragraphs: string[];
   figure?: string;
+  /** Source-owned cover line already locked on the piece. Never invented. */
+  coverLine?: string;
 };
 
 export type BoundIssue = {

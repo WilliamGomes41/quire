@@ -31,6 +31,8 @@ describe("PR 4 surface", () => {
     expect(read).toMatch(/data-sheet="cover"/);
     expect(read).toMatch(/data-sheet="contents"/);
     expect(read).toMatch(/data-sheet="piece"/);
+    expect(read).toMatch(/page\.cover\.kicker \? <p className="kicker">\{page\.cover\.kicker\}<\/p> : null/);
+    expect(read).toMatch(/page\.contents\.kicker/);
     expect(read).not.toMatch(/takeLabel/);
     expect(read).not.toMatch(/className="opener"/);
     expect(read).not.toMatch(/className="aside"/);
