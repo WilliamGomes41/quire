@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { composeIssue } from "../src/lib/compose";
 import type { BoundIssue } from "../src/lib/bind";
+import { kicker } from "../src/copy";
 
 const issue: BoundIssue = {
   id: "issue-1",
@@ -89,6 +90,24 @@ describe("bound magazine sheet", () => {
     expect(read).toMatch(/figure\.fit === "cover" \? "sheet-figure cover" : "sheet-figure contain"/);
     const page = composeIssue(issue);
     expect(page.sequence[0]?.figure?.fit).toBe("contain");
+  });
+
+  it("omits the cover kicker element when there is no source-owned cover line", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const compose = readFileSync("src/lib/compose.ts", "utf8");
+    const page = composeIssue(issue);
+    expect(kicker).toBe("A personal press");
+    expect(page.cover.kicker).toBeUndefined();
+    expect(JSON.stringify(page.cover)).not.toMatch(/A personal press/);
+    expect(page.contents.kicker).toBe("In this issue");
+    expect(page.cover.masthead).toBe("Quire");
+    expect(compose).not.toMatch(/import \{[^}]*\bkicker\b/);
+    expect(compose).not.toMatch(/A personal press/);
+    expect(read).toMatch(/page\.cover\.kicker \? <p className="kicker">\{page\.cover\.kicker\}<\/p> : null/);
+    expect(read).toMatch(/page\.contents\.kicker/);
+    expect(read).toMatch(/page\.cover\.masthead/);
+    expect(read).not.toMatch(/\bPress\b/);
+    expect(read).not.toMatch(/\/clips\/\$/);
   });
 
   it("does not copy lucide, shadcn, sonner, notes, BindDialog, or a /clips reader", () => {

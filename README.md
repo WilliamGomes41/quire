@@ -18,7 +18,7 @@ The kept card shows the stored source headline when Keep could read one. Host an
 
 Then Select → Create issue → Read. An issue is whatever you choose to bind. The kept piece is in unless you take it out. Related reporting joins only when you select it. Suggestions stay suggestions until then.
 
-Create issue fetches the author's original words and locks them. Magazine is that bound issue — a readable sheet, not a restyle of a URL list. Cards open that page: cover, contents, then a sequence of square sheets. Original words are recomposed on the sheet. A take may sit as unlabeled italic between hairlines. It is optional. It is not a TL;DR kicker. The page still reads if the take is missing. The folio is not the raw source URL.
+Create issue fetches the author's original words and locks them. Magazine is that bound issue — a readable sheet, not a restyle of a URL list. Cards open that page: cover, contents, then a sequence of square sheets. Original words are recomposed on the sheet. The cover does not print product copy as a kicker. A cover kicker appears only when bind already has a source-owned cover line — not `understanding.topic`, not the take, not an invented dek. A take may sit as unlabeled italic between hairlines. It is optional. It is not a TL;DR kicker. The page still reads if the take is missing. The folio is not the raw source URL.
 
 Search failure, understanding failure, a failed take, or a failed bind do not fail Keep.
 

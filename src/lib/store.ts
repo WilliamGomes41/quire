@@ -89,6 +89,7 @@ function readPieces(value: unknown): BoundPiece[] {
     }
     const figure =
       typeof rec.figure === "string" && isPublicHttpUrl(rec.figure.trim()) ? rec.figure.trim() : "";
+    const coverLine = typeof rec.coverLine === "string" ? rec.coverLine.trim() : "";
     return [
       {
         url: rec.url,
@@ -96,6 +97,7 @@ function readPieces(value: unknown): BoundPiece[] {
         headline: typeof rec.headline === "string" ? rec.headline : rec.url,
         paragraphs: rec.paragraphs.filter((p): p is string => typeof p === "string" && p.trim() !== ""),
         ...(figure ? { figure } : {}),
+        ...(coverLine ? { coverLine } : {}),
       },
     ];
   });

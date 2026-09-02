@@ -41,7 +41,7 @@ function ReadIssue() {
         <article className="sheet sheet-cover" data-sheet="cover">
           {page.cover.figure ? <SheetPhoto figure={page.cover.figure} /> : null}
           <div className="cover-content">
-            <p className="kicker">{page.cover.kicker}</p>
+            {page.cover.kicker ? <p className="kicker">{page.cover.kicker}</p> : null}
             <p className="masthead">{page.cover.masthead}</p>
             <div className="accent-rule" />
             <h1>{page.cover.title}</h1>
