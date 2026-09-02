@@ -122,12 +122,24 @@ describe("related row is readable without leaving Select", () => {
     });
   });
 
-  it("falls back to the url as title when none is stored", () => {
+  it("falls back to publisher · date when there is no snippet, and does not invent a dek", () => {
     expect(relatedRow({ url: "https://news.example/one" })).toEqual({
       title: "https://news.example/one",
       host: "news.example",
       snippet: "",
       detail: "news.example",
+    });
+    expect(
+      relatedRow({
+        url: "https://news.example/two",
+        title: "Harbour vote follow-up",
+        date: "2026-09-01",
+      }),
+    ).toEqual({
+      title: "Harbour vote follow-up",
+      host: "news.example",
+      snippet: "",
+      detail: "news.example · 2026-09-01",
     });
   });
 });

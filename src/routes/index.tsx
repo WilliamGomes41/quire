@@ -265,9 +265,7 @@ function BindCard({
         </span>
       </label>
       <p className="actions">
-        <a className="source" href={clip.url} target="_blank" rel="noreferrer">
-          {sourceLabel}
-        </a>
+        <span className="source">{sourceLabel}</span>
         <button
           type="button"
           className="quiet"

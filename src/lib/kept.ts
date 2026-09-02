@@ -52,14 +52,15 @@ export function paperBadgeLabel(record: UnderstandingRecord | null | undefined):
   return record.contentType;
 }
 
-/** Title, stored snippet, or publisher when there is no snippet. Not an off-site link. */
+/** Title, stored snippet, or publisher · date when there is no snippet. Not an off-site link. No invented dek. */
 export function relatedRow(page: RelatedPage) {
   const host = hostnameOf(page.url);
   const snippet = page.snippet ?? "";
+  const date = typeof page.date === "string" ? page.date.trim() : "";
   return {
     title: page.title || page.url,
     host,
     snippet,
-    detail: snippet ? "" : host,
+    detail: snippet ? "" : [host, date].filter(Boolean).join(" · "),
   };
 }

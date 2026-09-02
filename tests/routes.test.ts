@@ -69,16 +69,13 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/\/clips\/\$/);
   });
 
-  it("keeps Source as a separate control", () => {
+  it("keeps Source as a quiet secondary word, not the hit target", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/className="source"/);
     expect(keep).toMatch(/sourceLabel/);
-    expect(keep).toMatch(/href=\{clip\.url\}/);
-    expect(keep).toMatch(/target="_blank"/);
-    const sourceControl = keep.match(
-      /<a className="source" href=\{clip\.url\} target="_blank" rel="noreferrer">\s*\{sourceLabel\}\s*<\/a>/,
-    );
-    expect(sourceControl).not.toBeNull();
+    expect(keep).toMatch(/<span className="source">\{sourceLabel\}<\/span>/);
+    expect(keep).not.toMatch(/href=\{clip\.url\}/);
+    expect(keep).not.toMatch(/target="_blank"/);
   });
 
   it("shows a paper badge only from an ok understanding", () => {
@@ -96,7 +93,7 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/href=\{page\.url\}/);
   });
 
-  it("shows the stored related snippet, or publisher when there is no snippet", () => {
+  it("shows the stored related snippet, or publisher · date when there is no snippet", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
     expect(keep).toMatch(/\{row\.detail \? <span className="folio">\{row\.detail\}<\/span> : null\}/);
@@ -122,6 +119,16 @@ describe("kept card does not leak to the source", () => {
     expect(keep).toMatch(/selections:/);
     expect(keep).not.toMatch(/onBind/);
     expect(keep).toMatch(/\/read\/\$id/);
+  });
+
+  it("lets the tile and related row toggle include, and never leaves on primary click", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/className="choice include"/);
+    expect(keep).toMatch(/includeOriginal/);
+    expect(keep).toMatch(/onToggle/);
+    expect(keep).not.toMatch(/href=\{clip\.url\}/);
+    expect(keep).not.toMatch(/href=\{page\.url\}/);
+    expect(keep).not.toMatch(/<img|og:image|ogImage/);
   });
 
   it("hides the Select sermons on the tiles", () => {

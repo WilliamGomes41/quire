@@ -8,6 +8,7 @@ export type RelatedPage = {
   url: string;
   title?: string;
   snippet?: string;
+  date?: string;
 };
 
 export type RelatedRailOk = {
@@ -162,6 +163,7 @@ export function readRelatedReporting(value: unknown): RelatedPage[] | null {
         url: rec.url,
         ...(typeof rec.title === "string" && rec.title ? { title: rec.title } : {}),
         ...(typeof rec.snippet === "string" && rec.snippet ? { snippet: rec.snippet } : {}),
+        ...(typeof rec.date === "string" && rec.date ? { date: rec.date } : {}),
       },
     ];
   });

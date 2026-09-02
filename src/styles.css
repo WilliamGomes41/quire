@@ -199,7 +199,7 @@ nav {
 .source {
   font-size: 0.85rem;
   width: fit-content;
-  text-decoration: none;
+  color: color-mix(in srgb, var(--ink) 62%, var(--paper));
 }
 
 button.quiet {
