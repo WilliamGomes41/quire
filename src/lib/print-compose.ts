@@ -12,11 +12,11 @@ import type { BoundIssue } from "./bind";
 import { composeIssue, type PagePlan } from "./compose";
 import { paperBox, printPlan, type PaperName, type PrintSheet } from "./print";
 
-const PAPER = rgb(250 / 255, 247 / 255, 241 / 255);
+const PAPER = rgb(243 / 255, 238 / 255, 228 / 255);
 const INK = rgb(28 / 255, 24 / 255, 20 / 255);
-const BINDING = rgb(74 / 255, 92 / 255, 86 / 255);
-const MUTED = rgb(121 / 255, 118 / 255, 113 / 255);
-const RULE = rgb(214 / 255, 211 / 255, 206 / 255);
+const BINDING = rgb(61 / 255, 74 / 255, 58 / 255);
+const MUTED = rgb(110 / 255, 101 / 255, 92 / 255);
+const RULE = rgb(212 / 255, 201 / 255, 184 / 255);
 
 const FACES = {
   sans: new URL("../../fonts/SourceSans3-Regular.ttf", import.meta.url),

@@ -1,10 +1,10 @@
 :root {
-  --paper: #faf7f1;
+  --paper: #f3eee4;
   --ink: #1c1814;
-  --binding: #4a5c56;
-  --muted: color-mix(in srgb, var(--ink) 58%, var(--paper));
-  --rule: color-mix(in srgb, var(--ink) 16%, var(--paper));
-  --deep: color-mix(in srgb, var(--ink) 8%, var(--paper));
+  --binding: #3d4a3a;
+  --muted: #6e655c;
+  --rule: #d4c9b8;
+  --deep: #e7dece;
   --font-sans: "Source Sans 3", system-ui, sans-serif;
   --font-serif: "Source Serif 4", Georgia, serif;
 }
@@ -373,7 +373,7 @@ button:disabled {
 
 html:has(.stage),
 body:has(.stage) {
-  background: color-mix(in srgb, var(--binding) 88%, var(--ink));
+  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
 }
 
 .stage {
@@ -381,7 +381,7 @@ body:has(.stage) {
   min-height: 100vh;
   margin: 0;
   padding: 0 0 3rem;
-  background: color-mix(in srgb, var(--binding) 88%, var(--ink));
+  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
   color: var(--paper);
 }
 
