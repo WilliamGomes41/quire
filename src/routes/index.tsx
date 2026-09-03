@@ -2,7 +2,6 @@ import { createFileRoute, Link, useRouter } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
 import { useMemo, useState } from "react";
 import {
-  boundEmpty,
   boundNote,
   couldNotUnderstand,
   createIssueLabel,
@@ -13,8 +12,10 @@ import {
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
   nothingSelected,
+  pressCoverMeta,
+  pressEmpty,
+  pressLabel,
   productName,
-  readLine,
   removeIssueAsk,
   removeLabel,
   removePiecesTooLabel,
@@ -230,10 +231,10 @@ function Home() {
         )}
       </section>
 
-      <section className="board">
-        <h2>{readLine}</h2>
+      <section className="board press">
+        <h2>{pressLabel}</h2>
         {issues.length === 0 ? (
-          <p className="empty">{boundEmpty}</p>
+          <p className="empty">{pressEmpty}</p>
         ) : (
           <ul className="covers">
             {issues.map((issue) => (
@@ -276,9 +277,8 @@ function BoundCover({
   return (
     <article>
       <Link className="cover" to="/read/$id" params={{ id: issue.id }}>
-        <span className="kicker">Issue</span>
         <strong className="display">{issue.title}</strong>
-        <span className="empty">{issue.pieces.length === 1 ? "One piece" : `${issue.pieces.length} pieces`}</span>
+        <span className="folio">{pressCoverMeta(issue)}</span>
       </Link>
       {asking ? (
         <>

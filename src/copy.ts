@@ -50,15 +50,20 @@ export const returnToDeskLabel = "Return the pieces to Desk.";
 
 export const removePiecesTooLabel = "Remove the pieces too.";
 
-export const readLine = "Read the bound issue.";
+export const pressLabel = "Press";
+
+export const pressEmpty = "Nothing in the library yet.";
+
+export function pressCoverMeta(issue: { createdAt: string; pieces: { length: number } }) {
+  const count = issue.pieces.length === 1 ? "One piece" : `${issue.pieces.length} pieces`;
+  return `${count} · ${issue.createdAt.slice(0, 10)}`;
+}
 
 export const contentsKicker = "In this issue";
 
 export const takeLabel = "Take";
 
 export const boundNote = "Bound.";
-
-export const boundEmpty = "No issue bound yet. Keep a piece. Choose. Create the issue.";
 
 export const nothingSelected = "Select something to bind. An issue is what you choose.";
 

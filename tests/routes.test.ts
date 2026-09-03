@@ -15,8 +15,9 @@ describe("PR 4 surface", () => {
     const text = files.map((file) => readFileSync(file, "utf8")).join("\n");
     expect(text.includes("/press")).toBe(false);
     const routes = walk("src/routes");
-    const routeText = routes.map((file) => readFileSync(file, "utf8")).join("\n");
-    expect(routeText).not.toMatch(/\bPress\b/);
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const nav = keep.match(/<nav>[\s\S]*?<\/nav>/)?.[0] ?? "";
+    expect(nav).not.toMatch(/\bPress\b/);
     expect(routes.some((file) => file.includes("press"))).toBe(false);
   });
 
@@ -157,7 +158,8 @@ describe("kept card does not leak to the source", () => {
     );
     expect(keep).not.toMatch(/lucide-react|Trash2|sonner|AlertDialog/);
     expect(keep).not.toMatch(/\/clips\/\$/);
-    expect(keep).not.toMatch(/\bPress\b/);
+    expect(keep).toMatch(/className="board press"/);
+    expect(keep).not.toMatch(/to=["']\/press["']/);
   });
 
   it("uses one Create issue for the board and does not bind an empty selection", () => {

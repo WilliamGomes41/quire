@@ -48,10 +48,12 @@ describe("Print this issue", () => {
     expect(read).toMatch(/\{printThisIssue\}/);
     expect(read).not.toMatch(/\bPress\b/);
     expect(read).not.toMatch(/>PDF</);
-    expect(keep).not.toMatch(/printThisIssue|Print this issue|\bPress\b/);
+    expect(keep).not.toMatch(/printThisIssue|Print this issue/);
+    expect(keep).toMatch(/className="board press"/);
+    expect(keep).not.toMatch(/to=["']\/press["']/);
   });
 
-  it("does not ship a /press route or a Press library surface", () => {
+  it("does not ship a /press route; Press stays the home library", () => {
     const routes = walk("src/routes");
     const src = walk("src")
       .filter((file) => !file.endsWith(".ttf"))
@@ -60,8 +62,8 @@ describe("Print this issue", () => {
     expect(routes.some((file) => file.includes("press"))).toBe(false);
     expect(existsSync("src/routes/press.tsx")).toBe(false);
     expect(src.includes("/press")).toBe(false);
-    expect(src).not.toMatch(/Press library|library of bound issues/);
     expect(readFileSync("src/routeTree.gen.ts", "utf8")).not.toMatch(/\/press/);
+    expect(readFileSync("src/routes/index.tsx", "utf8")).toMatch(/className="board press"/);
   });
 
   it("prints the bound sequence, original words, and the same Design Intent", () => {
