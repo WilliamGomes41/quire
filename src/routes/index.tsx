@@ -6,12 +6,8 @@ import {
   boundNote,
   couldNotUnderstand,
   createIssueLabel,
-  dek,
   emptyState,
-  headline,
-  keepHint,
   keptNote,
-  kicker,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
   nothingSelected,
@@ -119,36 +115,41 @@ function Home() {
 
   return (
     <main>
-      <nav>
-        <strong className="display">{productName}</strong>
-        <Link to="/login">Owner sign in</Link>
-      </nav>
-      <p className="kicker">{kicker}</p>
-      <h1>{headline}</h1>
-      <p className="empty">{dek}</p>
-
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (keeping) return;
-          const form = event.currentTarget;
-          const url = String(new FormData(form).get("url") ?? "");
-          setKeeping(true);
-          keepUrl({ data: { url } })
-            .then(() => {
-              form.reset();
-              return router.invalidate();
-            })
-            .finally(() => setKeeping(false));
-        }}
-      >
-        <label htmlFor="url">URL</label>
-        <input id="url" name="url" type="url" required placeholder="https://" disabled={keeping} />
-        <button type="submit" disabled={keeping} aria-busy={keeping}>
-          {keeping ? "Keeping…" : "Keep"}
-        </button>
-      </form>
-      <p className="empty">{keepHint}</p>
+      <header className="site">
+        <nav>
+          <strong className="site-masthead">{productName}</strong>
+          <Link to="/login">Owner sign in</Link>
+        </nav>
+        <form
+          className="keep"
+          onSubmit={(event) => {
+            event.preventDefault();
+            if (keeping) return;
+            const form = event.currentTarget;
+            const url = String(new FormData(form).get("url") ?? "");
+            setKeeping(true);
+            keepUrl({ data: { url } })
+              .then(() => {
+                form.reset();
+                return router.invalidate();
+              })
+              .finally(() => setKeeping(false));
+          }}
+        >
+          <input
+            id="url"
+            name="url"
+            type="url"
+            required
+            placeholder="https://"
+            aria-label="URL"
+            disabled={keeping}
+          />
+          <button type="submit" disabled={keeping} aria-busy={keeping}>
+            {keeping ? "Keeping…" : "Keep"}
+          </button>
+        </form>
+      </header>
 
       <section className="board">
         {clips.length === 0 ? (
@@ -321,16 +322,16 @@ function BindCard({
           }}
         />
         <span className="tile">
-          <header>
-            <h3 className="display">{heading}</h3>
-            {badge ? <span className="badge">{badge}</span> : null}
-          </header>
-          {snippet ? <p className="note">{snippet}</p> : null}
           {figure ? (
             <span className="figure">
               <img src={figure} alt="" />
             </span>
           ) : null}
+          <header>
+            <h3 className="display">{heading}</h3>
+            {badge ? <span className="badge">{badge}</span> : null}
+          </header>
+          {snippet ? <p className="note">{snippet}</p> : null}
           {secondary.length > 0 ? <p className="folio">{secondary.join(" · ")}</p> : null}
           {headlineSpoken ? (
             <p className={headlineSpoken.kind === "fail" ? "fail" : "empty"}>
