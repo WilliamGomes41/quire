@@ -34,11 +34,13 @@ main {
   padding: 2.5rem 1.25rem 4rem;
 }
 
+main:has(> .desk),
 main:has(> .board) {
   max-width: 68rem;
   padding: 2rem 2.25rem 5rem;
 }
 
+main:has(> .desk) > .site,
 main:has(> .board) > .site {
   max-width: none;
 }
@@ -75,8 +77,23 @@ form.keep {
   display: flex;
   align-items: stretch;
   gap: 0.65rem;
-  max-width: 28rem;
-  margin: 1.1rem 0 0;
+  margin: 0;
+}
+
+.desk {
+  display: grid;
+  gap: 2.5rem;
+  margin-top: 2rem;
+  align-items: start;
+}
+
+.keep-rail {
+  min-width: 0;
+}
+
+.desk .board {
+  margin-top: 0;
+  min-width: 0;
 }
 
 form.keep input {
@@ -261,6 +278,15 @@ nav {
 }
 
 @media (min-width: 48rem) {
+  .desk {
+    grid-template-columns: minmax(12rem, 16rem) minmax(0, 1fr);
+    gap: 2.75rem;
+  }
+
+  .keep-rail form.keep {
+    flex-direction: column;
+  }
+
   .cards {
     grid-template-columns: 1fr 1fr;
   }
@@ -318,6 +344,10 @@ nav {
 .card .figure {
   display: block;
   margin: 0 0 0.15rem;
+}
+
+.card.photo .figure {
+  order: -1;
 }
 
 .card .figure img {
