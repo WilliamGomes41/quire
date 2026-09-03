@@ -54,26 +54,30 @@ describe("Keep / Select press board", () => {
     expect(css).toMatch(/form\.keep button:hover:not\(:disabled\) \{[\s\S]*box-shadow:/);
   });
 
-  it("makes related a More on this topic section with titles, not a lone count", () => {
+  it("keeps related collapsed by default with heading and tally always visible", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
     expect(keep).toMatch(/moreOnThisTopic/);
     expect(keep).toMatch(/<h3>/);
     expect(keep).toMatch(/className="tally"/);
     expect(keep).toMatch(/relatedCollapsed\(pages, selected\)/);
     expect(keep).toMatch(/relatedVisible\(pages, selected\)/);
     expect(keep).toMatch(/relatedCountLabel\(pages\.length\)/);
+    expect(keep).toMatch(/const \[open, setOpen\] = useState\(false\)/);
+    expect(keep).toMatch(/aria-expanded=\{open\}/);
+    expect(keep).toMatch(/className=\{open \? "roll is-open" : "roll"\}/);
+    expect(keep).toMatch(/className="related-title"/);
     expect(keep).toMatch(/\{row\.title\}/);
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
     expect(keep).toMatch(/inLabel/);
     expect(keep).toMatch(/className="include"/);
-    expect(keep).not.toMatch(/aria-expanded/);
-    expect(keep).not.toMatch(/setOpen/);
     expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).not.toMatch(/<details|<summary/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
     expect(keep).not.toMatch(/to="\/read\/\$id" params=\{\{ id: page/);
     expect(keep).not.toMatch(/lucide-react|Chevron/);
-    expect(keep).not.toMatch(/className="badge"/);
+    expect(css).toMatch(/\.rail \.roll \{[\s\S]*grid-template-rows:\s*0fr/);
+    expect(css).toMatch(/\.rail \.roll\.is-open \{[\s\S]*grid-template-rows:\s*1fr/);
   });
 
   it("makes Keep one paste, not a form stack", () => {
@@ -154,7 +158,41 @@ describe("Keep / Select press board", () => {
     expect(keep).not.toMatch(/\/clips\/\$/);
     expect(keep).not.toMatch(/\bPress\b/);
     expect(keep).not.toMatch(/lucide-react|sonner|Trash2/);
-    expect(keep).not.toMatch(/paperBadgeLabel|className="badge"|COMMENT/);
+    expect(keep).not.toMatch(/\bCOMMENT\b/);
+    expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
+    expect(css).toMatch(/\.badge \{[\s\S]*color:\s*var\(--ink\)/);
+    expect(css).toMatch(/\.badge \{[\s\S]*background:\s*var\(--paper\)/);
+    expect(css).toMatch(/\.badge \{[\s\S]*border:\s*1px solid var\(--ink\)/);
+    expect(css).not.toMatch(/\.badge \{[^}]*text-transform:\s*uppercase/);
+  });
+
+  it("puts Grok contentType on the keep card only when understanding is ok", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
+    expect(keep).toMatch(/kind \? <span className="badge">\{kind\}<\/span> : null/);
+    const related = keep.slice(keep.indexOf("function RelatedItem"));
+    expect(related).not.toMatch(/paperBadgeLabel|className="badge"/);
+    expect(keep).not.toMatch(/\bCOMMENT\b/);
+  });
+
+  it("shows Create issue work while fetch runs and fail is not a quiet miss", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    const bind = readFileSync("src/lib/bind.ts", "utf8");
+    expect(keep).toMatch(/const \[binding, setBinding\] = useState\(false\)/);
+    expect(keep).toMatch(/if \(binding\) return;/);
+    expect(keep).toMatch(/setBinding\(true\)/);
+    expect(keep).toMatch(/disabled=\{binding\}/);
+    expect(keep).toMatch(/aria-busy=\{binding\}/);
+    expect(keep).toMatch(/Creating…/);
+    expect(keep).toMatch(/finally\(\(\) => setBinding\(false\)\)/);
+    expect(keep).toMatch(/role="alert"/);
+    expect(keep).toMatch(/className="fail"/);
+    expect(bind).toMatch(/Promise\.all\(chosen\.map\(\(piece\) => wordsFor\(piece, fetchWords\)\)\)/);
+    expect(css).toMatch(/\.fail \{[\s\S]*color:\s*var\(--ink\)/);
+    expect(css).toMatch(/\.fail \{[\s\S]*font-weight:\s*600/);
+    expect(css).toMatch(/\.fail \{[\s\S]*border-left:\s*1px solid var\(--ink\)/);
+    expect(css).not.toMatch(/\.fail \{[\s\S]*color-mix\(in srgb, var\(--ink\) 78%/);
   });
 
   it("keeps one Create issue, quiet Remove, and fail-closed headline persist", () => {

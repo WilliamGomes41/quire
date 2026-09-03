@@ -51,7 +51,7 @@ export function keptFigure(record: SourceHeadlineRecord | null | undefined) {
   return record.figure?.trim() ?? "";
 }
 
-/** Paper badge from stored understanding when status is ok. No badge if missing or failed. */
+/** Quiet characterization from stored understanding when status is ok. None if missing or failed. */
 export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): ContentType | null {
   if (!record || record.status !== "ok") return null;
   return record.contentType;
@@ -75,7 +75,7 @@ export function relatedVisible(pages: RelatedPage[], selected: string[]) {
   return pages.filter((page) => selected.includes(page.url));
 }
 
-/** Unselected related stay suggestions until selected. */
+/** Unselected related stay in the collapsed set. */
 export function relatedCollapsed(pages: RelatedPage[], selected: string[]) {
   return pages.filter((page) => !selected.includes(page.url));
 }

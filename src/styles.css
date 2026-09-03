@@ -134,7 +134,10 @@ ul {
 
 .fail {
   font-size: 0.95rem;
-  color: color-mix(in srgb, var(--ink) 78%, var(--paper));
+  font-weight: 600;
+  color: var(--ink);
+  border-left: 1px solid var(--ink);
+  padding-left: 0.65rem;
 }
 
 nav {
@@ -161,9 +164,6 @@ nav {
 }
 
 .rail h3 {
-  display: flex;
-  align-items: baseline;
-  gap: 0.45rem;
   font-family: var(--font-sans);
   font-size: 0.72rem;
   letter-spacing: 0.1em;
@@ -171,6 +171,35 @@ nav {
   font-weight: 600;
   color: color-mix(in srgb, var(--ink) 58%, var(--paper));
   margin: 0 0 0.3rem;
+}
+
+.rail h3 button {
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  font-weight: inherit;
+  width: auto;
+}
+
+.rail .roll {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 240ms ease;
+}
+
+.rail .roll.is-open {
+  grid-template-rows: 1fr;
+}
+
+.rail .roll-inner {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .rail .tally {
@@ -297,12 +326,21 @@ nav {
 .badge {
   width: fit-content;
   font-size: 0.72rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  font-weight: 600;
-  color: var(--binding);
-  border: 1px solid color-mix(in srgb, var(--binding) 28%, var(--paper));
-  padding: 0.18rem 0.45rem;
+  letter-spacing: 0.02em;
+  font-weight: 400;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  padding: 0.05rem 0.3rem;
+}
+
+button.related-title {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  text-align: left;
+  width: auto;
+  font: inherit;
 }
 
 .actions {
@@ -492,7 +530,8 @@ body:has(.stage) {
   .card,
   .covers .cover,
   form.keep button,
-  .sheet {
+  .sheet,
+  .rail .roll {
     transition: none;
   }
 

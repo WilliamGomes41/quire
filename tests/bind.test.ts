@@ -273,6 +273,76 @@ describe("create issue binds a visible magazine page", () => {
     expect(page.cover.masthead).toBe("Quire");
   });
 
+  it("stays unfinished while fetchArticleWords is in flight", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let finished = false;
+    const work = createIssue({ clip }, memoryIssues(), {
+      fetchWords: async () => {
+        await gate;
+        return originalWords;
+      },
+      writeTake: async () => {
+        throw new Error("no take");
+      },
+    }).then((issue) => {
+      finished = true;
+      return issue;
+    });
+    await Promise.resolve();
+    expect(finished).toBe(false);
+    release();
+    const issue = await work;
+    expect(finished).toBe(true);
+    expect(issue.pieces.map((piece) => piece.url)).toEqual(["https://example.com/kept"]);
+  });
+
+  it("still binds the original when a related fetch fails", async () => {
+    const clips = memoryClips();
+    const clip = await saveClip({ url: "https://example.com/kept" }, clips, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: [],
+      }),
+      searchPages: async () => [{ url: "https://news.example/one", title: "Harbour vote in Praia" }],
+    });
+    const started: string[] = [];
+    const issue = await createIssue(
+      { clip, choice: { includeOriginal: true, relatedUrls: ["https://news.example/one"] } },
+      memoryIssues(),
+      {
+        fetchWords: async (url) => {
+          started.push(url);
+          if (url === "https://news.example/one") {
+            throw new Error("Could not fetch the author's words. (403)");
+          }
+          return originalWords;
+        },
+        writeTake: async () => {
+          throw new Error("no take");
+        },
+      },
+    );
+    expect(started).toEqual(["https://example.com/kept", "https://news.example/one"]);
+    expect(issue.pieces.map((piece) => piece.url)).toEqual(["https://example.com/kept"]);
+    expect(issue.pieces[0]?.paragraphs).toEqual(originalWords.paragraphs);
+    expect(clips.rows.has(clip.id)).toBe(true);
+  });
+
   it("does not bind an empty selection", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {

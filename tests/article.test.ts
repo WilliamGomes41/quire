@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { extractArticleWords, fetchArticleWords, isPublicHttpUrl, plainText } from "../src/lib/article";
 
@@ -57,6 +58,25 @@ describe("original words stay the author's", () => {
         ),
     });
     expect(words.paragraphs).toEqual(["Author sentence one.", "Author sentence two."]);
+  });
+
+  it("fails closed on a 403 or an empty body", async () => {
+    await expect(
+      fetchArticleWords("https://example.substack.com/p/kept", {
+        get: async () => new Response("", { status: 403 }),
+      }),
+    ).rejects.toThrow(/author's words/);
+    await expect(
+      fetchArticleWords("https://example.com/empty", {
+        get: async () => new Response("<html><body></body></html>", { status: 200 }),
+      }),
+    ).rejects.toThrow(/author's words/);
+  });
+
+  it("waits up to twelve seconds for the author's words", () => {
+    const article = readFileSync("src/lib/article.ts", "utf8");
+    expect(article).toMatch(/timeoutMs \?\? 12_000/);
+    expect(article).toMatch(/AbortSignal\.timeout/);
   });
 });
 

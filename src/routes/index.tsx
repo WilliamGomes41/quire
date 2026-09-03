@@ -28,6 +28,7 @@ import {
   keptFigure,
   keptHeading,
   keptSnippet,
+  paperBadgeLabel,
   relatedCollapsed,
   relatedCountLabel,
   relatedRow,
@@ -108,6 +109,7 @@ function Home() {
   const router = useRouter();
   const { clips, issues } = Route.useLoaderData();
   const [keeping, setKeeping] = useState(false);
+  const [binding, setBinding] = useState(false);
   const [choices, setChoices] = useState<Record<string, BindChoice>>({});
   const [bindError, setBindError] = useState("");
 
@@ -183,13 +185,17 @@ function Home() {
             </ul>
             <button
               type="button"
+              disabled={binding}
+              aria-busy={binding}
               onClick={() => {
+                if (binding) return;
                 const selected = chosenFromBoard(board);
                 if (selected.length === 0) {
                   setBindError(nothingSelected);
                   return;
                 }
                 setBindError("");
+                setBinding(true);
                 bindIssue({
                   data: {
                     selections: board
@@ -200,20 +206,26 @@ function Home() {
                         relatedUrls: choice.relatedUrls,
                       })),
                   },
-                }).then(
-                  (result) =>
-                    router.invalidate().then(() =>
-                      router.navigate({ to: "/read/$id", params: { id: result.id } }),
-                    ),
-                  (cause: unknown) => {
-                    setBindError(cause instanceof Error ? cause.message : "Could not bind this issue.");
-                  },
-                );
+                })
+                  .then(
+                    (result) =>
+                      router.invalidate().then(() =>
+                        router.navigate({ to: "/read/$id", params: { id: result.id } }),
+                      ),
+                    (cause: unknown) => {
+                      setBindError(cause instanceof Error ? cause.message : "Could not bind this issue.");
+                    },
+                  )
+                  .finally(() => setBinding(false));
               }}
             >
-              {createIssueLabel}
+              {binding ? "Creating…" : createIssueLabel}
             </button>
-            {bindError ? <p className="fail">{bindError}</p> : null}
+            {bindError ? (
+              <p className="fail" role="alert">
+                {bindError}
+              </p>
+            ) : null}
           </>
         )}
       </section>
@@ -306,6 +318,7 @@ function BindCard({
   const [error, setError] = useState("");
   const host = hostnameOf(clip.url);
   const heading = keptHeading(clip);
+  const kind = paperBadgeLabel(clip.understanding);
   const snippet = keptSnippet(clip.sourceHeadline);
   const figure = keptFigure(clip.sourceHeadline);
   const keptOn = clip.savedAt.slice(0, 10);
@@ -329,6 +342,7 @@ function BindCard({
         </span>
       ) : null}
       <header>
+        {kind ? <span className="badge">{kind}</span> : null}
         <h3 className="display">
           <Link to="/read/$id" params={{ id: clip.id }}>
             {heading}
@@ -409,6 +423,7 @@ function RelatedSelect({
   selected: string[];
   onToggle: (url: string, on: boolean) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const rail = clip.relatedRail;
   if (!rail) return null;
 
@@ -440,17 +455,27 @@ function RelatedSelect({
   return (
     <section className="rail">
       <h3>
-        {moreOnThisTopic}
-        {count ? <span className="tally">{count}</span> : null}
+        <button type="button" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+          {moreOnThisTopic}
+          {count ? <span className="tally">{count}</span> : null}
+        </button>
       </h3>
-      <ul>
-        {visible.map((page) => (
-          <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
-        ))}
-        {collapsed.map((page) => (
-          <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
-        ))}
-      </ul>
+      {visible.length > 0 ? (
+        <ul>
+          {visible.map((page) => (
+            <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+          ))}
+        </ul>
+      ) : null}
+      {collapsed.length > 0 ? (
+        <div className={open ? "roll is-open" : "roll"}>
+          <ul className="roll-inner">
+            {collapsed.map((page) => (
+              <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+            ))}
+          </ul>
+        </div>
+      ) : null}
     </section>
   );
 }
@@ -467,7 +492,14 @@ function RelatedItem({
   const row = relatedRow(page);
   return (
     <li>
-      <span>{row.title}</span>
+      <button
+        type="button"
+        className="related-title"
+        aria-pressed={on}
+        onClick={() => onToggle(page.url, !on)}
+      >
+        {row.title}
+      </button>
       {row.snippet ? <span className="note">{row.snippet}</span> : null}
       {row.detail ? <span className="folio">{row.detail}</span> : null}
       <button
