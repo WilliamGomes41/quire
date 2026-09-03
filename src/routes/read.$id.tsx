@@ -14,7 +14,7 @@ import {
 } from "../lib/compose";
 import { issueStore } from "../lib/store";
 
-const TURN_MS = 180;
+const TURN_MS = 280;
 
 const loadIssue = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
@@ -78,8 +78,12 @@ function ReadIssue() {
     if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setIndex(next);
-      setTurning(false);
-      timer.current = null;
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setTurning(false);
+          timer.current = null;
+        });
+      });
     }, TURN_MS);
   }
 

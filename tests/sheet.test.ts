@@ -240,7 +240,7 @@ describe("bound magazine sheet", () => {
     expect(nextSheetIndex(2, sheets.length)).toBe(2);
 
     expect(css).toMatch(/\.sheet\.is-turning/);
-    expect(css).toMatch(/translateX\(-3\.5%\) rotate\(-0\.55deg\)/);
+    expect(css).toMatch(/translateX\(-5%\) rotate\(-0\.8deg\)/);
     expect(css).not.toMatch(/page-curl|curl-corner|flip-book|page-flip|stpageflip/i);
     expect(css).not.toMatch(/perspective|rotateY/i);
     expect(css).not.toMatch(/two-page|page-spread|verso|recto/i);
