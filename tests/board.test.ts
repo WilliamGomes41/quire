@@ -10,34 +10,70 @@ describe("Keep / Select press board", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     const tile = css.match(/\.card \.display \{([^}]+)\}/)?.[1] ?? "";
+    const issue = css.match(/\.cover \.display \{([^}]+)\}/)?.[1] ?? "";
     const size = remSize(tile);
+    const issueSize = remSize(issue);
+    const leading = Number(/line-height:\s*([\d.]+)/.exec(tile)?.[1]);
 
     expect(keep).toMatch(/keptHeading\(clip\)/);
     expect(keep).toMatch(/<Link to="\/read\/\$id" params=\{\{ id: clip\.id \}\}>/);
     expect(keep).toMatch(/\{heading\}/);
     expect(tile).toMatch(/font-family:\s*var\(--font-serif\)/);
+    expect(tile).toMatch(/font-weight:\s*600/);
+    expect(issue).toMatch(/font-weight:\s*600/);
+    expect(leading).toBeGreaterThanOrEqual(1.25);
+    expect(leading).toBeLessThanOrEqual(1.35);
     expect(size).toBeGreaterThanOrEqual(1.5);
     expect(size).toBeLessThanOrEqual(2.2);
+    expect(issueSize).toBeGreaterThanOrEqual(1.5);
+    expect(issueSize).toBeLessThanOrEqual(2.2);
     expect(tile).not.toMatch(/(?:^|[^\d.])(?:[4-7](?:\.\d+)?)rem/);
     expect(css).toMatch(/\.masthead \{[\s\S]*font-size:\s*clamp\(3\.25rem/);
     expect(css).not.toMatch(/\.card \.display \{[^}]*(?:^|[^\d.])(?:[4-7](?:\.\d+)?)rem/);
   });
 
-  it("keeps related collapsed by default with a quiet count, not an OS accordion", () => {
+  it("lifts Keep and bound-issue cards on hover, not the Read sheet", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const lift = css.match(/\.card:hover,\s*\.covers \.cover:hover \{([^}]+)\}/)?.[1] ?? "";
+    const rise = Number(/translateY\(-([\d.]+)px\)/.exec(lift)?.[1]);
+    expect(css).toMatch(/\.card,[\s\S]*\.cover \{[\s\S]*transition:\s*transform 200ms ease,\s*box-shadow 200ms ease/);
+    expect(lift).toMatch(/box-shadow:/);
+    expect(rise).toBeGreaterThanOrEqual(2);
+    expect(rise).toBeLessThanOrEqual(3);
+    expect(css).toMatch(/\.sheet:hover \{[\s\S]*transform:\s*none/);
+    expect(css).toMatch(/\.sheet:hover \{[\s\S]*box-shadow: 0 10px 28px/);
+    expect(css).not.toMatch(/\.sheet:hover \{[^}]*translateY/);
+    expect(css).not.toMatch(/\.sheet:hover \{[^}]*translateY\(-[23]px\)/);
+  });
+
+  it("makes the Keep button slightly larger with a soft colour and shadow hover", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const keepBtn = css.match(/form\.keep button \{([^}]+)\}/)?.[1] ?? "";
+    expect(keepBtn).toMatch(/padding:\s*0\.8rem 1\.2rem/);
+    expect(css).toMatch(/form\.keep button:hover:not\(:disabled\) \{[\s\S]*background:\s*color-mix/);
+    expect(css).toMatch(/form\.keep button:hover:not\(:disabled\) \{[\s\S]*box-shadow:/);
+  });
+
+  it("makes related a More on this topic section with titles, not a lone count", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/moreOnThisTopic/);
+    expect(keep).toMatch(/<h3>/);
+    expect(keep).toMatch(/className="tally"/);
     expect(keep).toMatch(/relatedCollapsed\(pages, selected\)/);
     expect(keep).toMatch(/relatedVisible\(pages, selected\)/);
-    expect(keep).toMatch(/relatedCountLabel\(collapsed\.length\)/);
-    expect(keep).toMatch(/const \[open, setOpen\] = useState\(false\)/);
-    expect(keep).toMatch(/aria-expanded=\{open\}/);
+    expect(keep).toMatch(/relatedCountLabel\(pages\.length\)/);
     expect(keep).toMatch(/\{row\.title\}/);
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
     expect(keep).toMatch(/inLabel/);
     expect(keep).toMatch(/className="include"/);
+    expect(keep).not.toMatch(/aria-expanded/);
+    expect(keep).not.toMatch(/setOpen/);
     expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).not.toMatch(/<details|<summary/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
+    expect(keep).not.toMatch(/to="\/read\/\$id" params=\{\{ id: page/);
     expect(keep).not.toMatch(/lucide-react|Chevron/);
+    expect(keep).not.toMatch(/className="badge"/);
   });
 
   it("makes Keep one paste, not a form stack", () => {

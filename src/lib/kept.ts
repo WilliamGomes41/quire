@@ -70,17 +70,17 @@ export function relatedRow(page: RelatedPage) {
   };
 }
 
-/** Selected related stay visible. They are in the bind. */
+/** Selected related join the bind. They stay first in the section. */
 export function relatedVisible(pages: RelatedPage[], selected: string[]) {
   return pages.filter((page) => selected.includes(page.url));
 }
 
-/** Unselected related stay in the collapsed set. */
+/** Unselected related stay suggestions until selected. */
 export function relatedCollapsed(pages: RelatedPage[], selected: string[]) {
   return pages.filter((page) => !selected.includes(page.url));
 }
 
-/** Short count, not a sermon. Empty when nothing is collapsed. */
+/** Short count for the section heading. Empty when there is nothing to count. */
 export function relatedCountLabel(count: number) {
   return count > 0 ? String(count) : "";
 }

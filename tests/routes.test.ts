@@ -101,10 +101,14 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).toMatch(/relatedRow\(page\)/);
     expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
+    expect(keep).toMatch(/moreOnThisTopic/);
+    expect(keep).toMatch(/<h3>/);
+    expect(keep).toMatch(/className="tally"/);
     expect(keep).toMatch(/inLabel/);
     expect(keep).not.toMatch(/<a href=\{page\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
     expect(keep).not.toMatch(/to="\/read\/\$id" params=\{\{ id: page/);
+    expect(keep).not.toMatch(/aria-expanded/);
   });
 
   it("shows the stored related snippet, or publisher · date when there is no snippet", () => {
