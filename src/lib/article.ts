@@ -12,8 +12,44 @@ export type ArticleWords = {
   figure?: string;
 };
 
+/**
+ * jsonb cannot store U+0000 or unpaired surrogates.
+ * JSON.stringify turns those into \\u0000 / \\ud800; Postgres rejects the first
+ * as "unsupported Unicode escape sequence". Strip only those. Author words stay.
+ */
+export function jsonText(value: string) {
+  let out = "";
+  for (let i = 0; i < value.length; i += 1) {
+    const code = value.charCodeAt(i);
+    if (code === 0) continue;
+    if (code >= 0xd800 && code <= 0xdbff) {
+      const next = value.charCodeAt(i + 1);
+      if (next >= 0xdc00 && next <= 0xdfff) {
+        out += value[i] + value[i + 1];
+        i += 1;
+        continue;
+      }
+      continue;
+    }
+    if (code >= 0xdc00 && code <= 0xdfff) continue;
+    out += value[i];
+  }
+  return out;
+}
+
+export function jsonValue<T>(value: T): T {
+  if (typeof value === "string") return jsonText(value) as T;
+  if (Array.isArray(value)) return value.map((item) => jsonValue(item)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [key, jsonValue(item)]),
+    ) as T;
+  }
+  return value;
+}
+
 export function compactText(value: unknown, max = 20_000) {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  return typeof value === "string" ? jsonText(value).replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
 /** Tags off. Entities decoded. Never invented. */

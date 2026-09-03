@@ -3,6 +3,7 @@
  * Separate Grok call after Select. Not search. Not a TL;DR kicker. PROTOCOL §5 / §6.
  */
 
+import { jsonText } from "./article";
 import { grokModel, xaiChatUrl } from "./model";
 import type { ArticleWords } from "./article";
 
@@ -40,7 +41,7 @@ export function parseTake(value: unknown): string {
   if (typeof text !== "string" || text.trim() === "") {
     throw new Error("Take text is required.");
   }
-  return text.replace(/\s+/g, " ").trim().slice(0, 2000);
+  return jsonText(text).replace(/\s+/g, " ").trim().slice(0, 2000);
 }
 
 export function takeFail(error: unknown, at = new Date().toISOString()): TakeFail {
