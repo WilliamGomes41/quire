@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  boundEmpty,
   couldNotFetchWords,
   couldNotLook,
   couldNotUnderstand,
@@ -12,7 +11,9 @@ import {
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
   originalInByDefault,
-  readLine,
+  pressCoverMeta,
+  pressEmpty,
+  pressLabel,
   removeIssueAsk,
   removeLabel,
   removePiecesTooLabel,
@@ -42,18 +43,22 @@ describe("product voice", () => {
     expect(removeIssueAsk).toMatch(/Return the pieces to Desk/);
     expect(returnToDeskLabel).toBe("Return the pieces to Desk.");
     expect(removePiecesTooLabel).toBe("Remove the pieces too.");
-    expect(readLine).toMatch(/bound issue/i);
+    expect(pressLabel).toBe("Press");
+    expect(pressEmpty).toMatch(/library/i);
+    expect(pressEmpty).not.toMatch(/Could not|fail|Create the issue/i);
+    expect(pressCoverMeta({ createdAt: "2026-09-01T00:00:00.000Z", pieces: { length: 1 } })).toMatch(
+      /One piece · 2026-09-01/,
+    );
     expect(contentsKicker).toBe("In this issue");
     expect(originalInByDefault).toMatch(/unless you take it out/);
     expect(takeLabel).toBe("Take");
     expect(takeLabel).not.toMatch(/TL;DR|tl;dr/);
-    expect(boundEmpty).toMatch(/Create the issue/);
     expect(printThisIssue).toBe("Print this issue");
     expect(printThisIssue).not.toMatch(/Press|PDF/);
     expect(couldNotPrint).toBe("Could not print this issue.");
   });
 
-  it("does not invent a Press product surface or a TL;DR kicker", () => {
+  it("keeps Press as the library name and does not invent a TL;DR kicker", () => {
     const surface = [
       kicker,
       headline,
@@ -65,17 +70,17 @@ describe("product voice", () => {
       removeIssueAsk,
       returnToDeskLabel,
       removePiecesTooLabel,
-      readLine,
       takeLabel,
-      boundEmpty,
       couldNotFetchWords,
       printThisIssue,
       couldNotPrint,
       inLabel,
     ].join(" ");
+    expect(pressLabel).toBe("Press");
     expect(surface).not.toMatch(/\bPress\b/);
     expect(surface).not.toMatch(/TL;DR|tl;dr/);
     expect(printThisIssue).toBe("Print this issue");
+    expect(printThisIssue).not.toMatch(/Press|PDF/);
   });
 
   it("keeps empty-topic copy off the system-fail sentence", () => {

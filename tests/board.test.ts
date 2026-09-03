@@ -36,7 +36,8 @@ describe("Keep / Select press board", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const lift = css.match(/\.card:hover,\s*\.covers \.cover:hover \{([^}]+)\}/)?.[1] ?? "";
     const rise = Number(/translateY\(-([\d.]+)px\)/.exec(lift)?.[1]);
-    expect(css).toMatch(/\.card,[\s\S]*\.cover \{[\s\S]*transition:\s*transform 200ms ease,\s*box-shadow 200ms ease/);
+    expect(css).toMatch(/\.card \{[\s\S]*transition:\s*transform 200ms ease,\s*box-shadow 200ms ease/);
+    expect(css).toMatch(/\.cover \{[\s\S]*transition:\s*transform 200ms ease,\s*box-shadow 200ms ease/);
     expect(lift).toMatch(/box-shadow:/);
     expect(rise).toBeGreaterThanOrEqual(2);
     expect(rise).toBeLessThanOrEqual(3);
@@ -121,7 +122,8 @@ describe("Keep / Select press board", () => {
     expect(keep).not.toMatch(/className="stage"/);
     expect(keep).not.toMatch(/className="sheet"/);
     expect(css).toMatch(/html,\s*body \{[\s\S]*background:\s*var\(--paper\)/);
-    expect(css).toMatch(/\.card,[\s\S]*\.cover \{[\s\S]*box-shadow:\s*none/);
+    expect(css).toMatch(/\.card \{[\s\S]*box-shadow:\s*none/);
+    expect(css).toMatch(/\.cover \{[\s\S]*box-shadow:\s*none/);
     expect(css).toMatch(/html:has\(\.stage\),[\s\S]*body:has\(\.stage\) \{[\s\S]*var\(--binding\)/);
   });
 
@@ -138,7 +140,7 @@ describe("Keep / Select press board", () => {
     expect(read).toMatch(/className="stage-print"/);
   });
 
-  it("keeps two families only, locked tokens, and no Press or /clips", () => {
+  it("keeps two families only, locked tokens, and no /clips", () => {
     const css = readFileSync("src/styles.css", "utf8");
     const root = readFileSync("src/routes/__root.tsx", "utf8");
     const keep = readFileSync("src/routes/index.tsx", "utf8");
@@ -156,7 +158,9 @@ describe("Keep / Select press board", () => {
     expect(css).toMatch(/\.stage \{[^}]*var\(--binding\)/);
     expect(css).not.toMatch(/Playfair|Fraunces|Newsreader|Instrument|Cormorant|Libre Baskerville|IBM Plex|Inter["']/);
     expect(keep).not.toMatch(/\/clips\/\$/);
-    expect(keep).not.toMatch(/\bPress\b/);
+    expect(keep).toMatch(/className="board press"/);
+    expect(keep).toMatch(/<h2>\{pressLabel\}<\/h2>/);
+    expect(keep).not.toMatch(/to=["']\/press["']/);
     expect(keep).not.toMatch(/lucide-react|sonner|Trash2/);
     expect(keep).not.toMatch(/\bCOMMENT\b/);
     expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);

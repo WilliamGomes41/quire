@@ -243,26 +243,30 @@ nav {
   border-bottom: 1px solid var(--binding);
 }
 
-.cards,
-.covers {
+.cards {
   list-style: none;
   padding: 0;
   display: grid;
   gap: 2.5rem 2.75rem;
 }
 
+.covers {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0;
+  max-width: 36rem;
+}
+
 @media (min-width: 48rem) {
   .cards {
     grid-template-columns: 1fr 1fr;
   }
-
-  .covers {
-    grid-template-columns: 1fr 1fr;
-  }
 }
 
-.card,
-.cover {
+.card {
   display: grid;
   gap: 0.7rem;
   padding: 0.75rem 0.85rem 1.4rem;
@@ -270,6 +274,21 @@ nav {
   border-bottom: 1px solid color-mix(in srgb, var(--binding) 38%, var(--paper));
   background: var(--paper);
   box-shadow: none;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.cover {
+  display: grid;
+  gap: 0.35rem;
+  padding: 1.15rem 0 1.2rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--binding) 38%, var(--paper));
+  background: var(--paper);
+  box-shadow: none;
+  text-decoration: none;
+  color: inherit;
+  min-height: 0;
+  align-content: start;
   transition: transform 200ms ease, box-shadow 200ms ease;
 }
 
@@ -424,19 +443,21 @@ button:disabled {
   opacity: 0.65;
 }
 
-.cover {
-  text-decoration: none;
-  color: inherit;
-  min-height: 0;
-  align-content: start;
-}
-
 .cover .display {
   font-family: var(--font-serif);
   font-size: 1.75rem;
   font-weight: 600;
   line-height: 1.28;
   letter-spacing: -0.02em;
+}
+
+.cover .folio {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.85rem;
+  letter-spacing: 0;
+  text-transform: none;
+  color: color-mix(in srgb, var(--ink) 62%, var(--paper));
 }
 
 .board > button {
