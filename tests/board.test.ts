@@ -108,7 +108,7 @@ describe("Keep / Select press board", () => {
     expect(css).toMatch(/--paper: #f3eee4;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #3d4a3a;/);
-    expect(css).not.toMatch(/#faf7f1|#161513|#1e2a24|#1e4a6a/i);
+    expect(css).not.toMatch(/#faf7f1|#161513|#1e2a24|#1e4a6a|#2a332c/i);
     expect(css).not.toMatch(/--mark:/);
     expect(css).not.toMatch(/Playfair|Fraunces|Newsreader|Instrument|Cormorant|Libre Baskerville|IBM Plex|Inter["']/);
     expect(keep).not.toMatch(/\/clips\/\$/);
