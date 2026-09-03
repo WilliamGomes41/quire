@@ -32,11 +32,11 @@ function ReadIssue() {
   const issue = Route.useLoaderData();
   const [index, setIndex] = useState(0);
   const [turning, setTurning] = useState(false);
-  const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const timer = useRef<number | null>(null);
 
   useEffect(() => {
     return () => {
-      if (timer.current) window.clearTimeout(timer.current);
+      if (timer.current !== null) window.clearTimeout(timer.current);
     };
   }, []);
 
@@ -75,7 +75,7 @@ function ReadIssue() {
       return;
     }
     setTurning(true);
-    if (timer.current) window.clearTimeout(timer.current);
+    if (timer.current !== null) window.clearTimeout(timer.current);
     timer.current = window.setTimeout(() => {
       setIndex(next);
       setTurning(false);
