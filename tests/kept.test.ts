@@ -79,7 +79,7 @@ describe("kept card heading", () => {
 });
 
 describe("paper badge from stored understanding", () => {
-  it("labels News, Comment, Study, or Notice only when status is ok", () => {
+  it("maps stored Comment to Opinion; News, Study, and Notice stay", () => {
     expect(
       paperBadgeLabel({
         status: "ok",
@@ -88,14 +88,15 @@ describe("paper badge from stored understanding", () => {
         entities: [],
       }),
     ).toBe("News");
-    expect(
-      paperBadgeLabel({
-        status: "ok",
-        contentType: "Comment",
-        topic: "A column on reading",
-        entities: [],
-      }),
-    ).toBe("Comment");
+    const comment = {
+      status: "ok" as const,
+      contentType: "Comment" as const,
+      topic: "A column on reading",
+      entities: [],
+    };
+    expect(paperBadgeLabel(comment)).toBe("Opinion");
+    expect(paperBadgeLabel(comment)).not.toBe("Comment");
+    expect(comment.contentType).toBe("Comment");
     expect(
       paperBadgeLabel({
         status: "ok",

@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { extractArticleWords, fetchArticleWords, isPublicHttpUrl, plainText } from "../src/lib/article";
+import { extractArticleWords, fetchArticleWords, isPublicHttpUrl, jsonText, jsonValue, plainText } from "../src/lib/article";
 
 describe("original words stay the author's", () => {
   it("extracts headline and paragraphs from the article, not a fragment paste-up", () => {
@@ -77,6 +77,30 @@ describe("original words stay the author's", () => {
     const article = readFileSync("src/lib/article.ts", "utf8");
     expect(article).toMatch(/timeoutMs \?\? 12_000/);
     expect(article).toMatch(/AbortSignal\.timeout/);
+  });
+});
+
+describe("jsonb text strips only illegal units", () => {
+  it("strips U+0000 and unpaired surrogates without rewriting the rest", () => {
+    expect(jsonText("The assembly\u0000 met at dusk in Praia.")).toBe(
+      "The assembly met at dusk in Praia.",
+    );
+    expect(jsonText("The assembly\uD800 met at dusk.")).toBe("The assembly met at dusk.");
+    expect(jsonText("low\uDC00end")).toBe("lowend");
+    expect(jsonText("A smile \uD83D\uDE00 stays.")).toBe("A smile \uD83D\uDE00 stays.");
+    expect(JSON.stringify(jsonText("The assembly\u0000 met."))).not.toMatch(/\\u0000/);
+    expect(JSON.stringify(jsonValue({ paragraphs: ["The assembly\u0000 met."] }))).not.toMatch(
+      /\\u0000/,
+    );
+  });
+
+  it("drops NUL from a Substack-shaped paragraph without inventing words", () => {
+    const words = extractArticleWords(
+      `<article><h1>The harbour vote</h1><p>The assembly\u0000 met at dusk in Praia.</p></article>`,
+      "https://example.substack.com/p/kept",
+    );
+    expect(words.paragraphs).toEqual(["The assembly met at dusk in Praia."]);
+    expect(words.paragraphs.join("")).not.toMatch(/\u0000/);
   });
 });
 

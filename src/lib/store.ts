@@ -1,6 +1,6 @@
 import { openDb } from "./db";
 import type { BoundIssue, BoundPiece, IssueStore } from "./bind";
-import { canonicalizeUrl, isPublicHttpUrl } from "./article";
+import { canonicalizeUrl, isPublicHttpUrl, jsonText, jsonValue } from "./article";
 import {
   readRelatedRail,
   readRelatedReporting,
@@ -118,11 +118,14 @@ export async function issueStore(): Promise<IssueStore> {
   const db = await openDb();
   return {
     async insert(issue) {
+      const title = jsonText(issue.title);
+      const take = jsonValue(issue.take);
+      const pieces = jsonValue(issue.pieces);
       await db.query(
         "insert into issues (id, created_at, title, lead_url, take, pieces) values ($1, $2, $3, $4, $5, $6)",
-        [issue.id, issue.createdAt, issue.title, issue.leadUrl, issue.take, issue.pieces],
+        [issue.id, issue.createdAt, title, issue.leadUrl, take, pieces],
       );
-      return issue;
+      return { ...issue, title, take, pieces };
     },
     async get(id) {
       const { rows } = await db.query(

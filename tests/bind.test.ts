@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { composeIssue } from "../src/lib/compose";
 import { createIssue, issueFromKeptWords, type BoundIssue, type IssueStore } from "../src/lib/bind";
-import { resetMemoryDb } from "../src/lib/db";
+import { openDb, resetMemoryDb } from "../src/lib/db";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
 import { relatedPersist } from "../src/lib/related";
 import { clipStore, issueStore, listClips, takeBoundOffDesk } from "../src/lib/store";
@@ -341,6 +341,114 @@ describe("create issue binds a visible magazine page", () => {
     expect(issue.pieces.map((piece) => piece.url)).toEqual(["https://example.com/kept"]);
     expect(issue.pieces[0]?.paragraphs).toEqual(originalWords.paragraphs);
     expect(clips.rows.has(clip.id)).toBe(true);
+  });
+
+  it("proves jsonb insert of U+0000 is the live unsupported Unicode escape sequence", async () => {
+    await issueStore();
+    const db = await openDb();
+    await expect(
+      db.query(
+        "insert into issues (id, created_at, title, lead_url, take, pieces) values ($1, $2, $3, $4, $5, $6)",
+        [
+          "issue-nul-proof",
+          "2026-09-01T00:00:00.000Z",
+          "The harbour vote",
+          "https://example.com/kept",
+          { status: "ok", text: "A quiet count." },
+          [
+            {
+              url: "https://example.com/kept",
+              role: "original",
+              headline: "The harbour vote",
+              paragraphs: ["The assembly\u0000 met at dusk in Praia."],
+            },
+          ],
+        ],
+      ),
+    ).rejects.toThrow(/unsupported Unicode escape sequence/);
+    await expect(
+      db.query(
+        "insert into issues (id, created_at, title, lead_url, take, pieces) values ($1, $2, $3, $4, $5, $6)",
+        [
+          "issue-take-nul-proof",
+          "2026-09-01T00:00:00.000Z",
+          "The harbour vote",
+          "https://example.com/kept",
+          { status: "ok", text: "A quiet\u0000 count." },
+          [
+            {
+              url: "https://example.com/kept",
+              role: "original",
+              headline: "The harbour vote",
+              paragraphs: ["The assembly met at dusk in Praia."],
+            },
+          ],
+        ],
+      ),
+    ).rejects.toThrow(/unsupported Unicode escape sequence/);
+  });
+
+  it("binds a paragraph with U+0000 or an unpaired surrogate instead of failing the store", async () => {
+    const clips = await clipStore();
+    const clip = await saveClip({ url: "https://example.com/nul-bind" }, clips, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => [],
+    });
+    const issue = await createIssue({ clip }, await issueStore(), {
+      fetchWords: async () => ({
+        url: clip.url,
+        headline: "The harbour vote",
+        paragraphs: [
+          "The assembly\u0000 met at dusk in Praia.",
+          "The motion\uD800 carried after a quiet count.",
+        ],
+      }),
+      writeTake: async () => {
+        throw new Error("take down");
+      },
+    });
+    expect(issue.pieces[0]?.paragraphs).toEqual([
+      "The assembly met at dusk in Praia.",
+      "The motion carried after a quiet count.",
+    ]);
+    expect(JSON.stringify(issue.pieces)).not.toMatch(/\\u0000|\\ud800/i);
+    expect(issue.take).toMatchObject({ status: "failed", message: "take down" });
+    const stored = await (await issueStore()).get(issue.id);
+    expect(stored?.pieces[0]?.paragraphs).toEqual(issue.pieces[0]?.paragraphs);
+    expect(stored?.take).toMatchObject({ status: "failed" });
+    expect(await clips.get(clip.id)).not.toBeNull();
+  });
+
+  it("does not fail the issue when the take itself contains U+0000", async () => {
+    const clips = await clipStore();
+    const clip = await saveClip({ url: "https://example.com/take-nul-bind" }, clips, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: [],
+      }),
+      searchPages: async () => [],
+    });
+    const issue = await createIssue({ clip }, await issueStore(), {
+      fetchWords: async () => ({
+        url: clip.url,
+        headline: "The harbour vote",
+        paragraphs: ["The assembly met at dusk in Praia."],
+      }),
+      writeTake: async () => "A quiet\u0000 count in Praia.",
+    });
+    expect(issue.pieces[0]?.paragraphs).toEqual(["The assembly met at dusk in Praia."]);
+    expect(issue.take).toMatchObject({ status: "ok", text: "A quiet count in Praia." });
+    expect(JSON.stringify(issue.take)).not.toMatch(/\\u0000/);
+    const stored = await (await issueStore()).get(issue.id);
+    expect(stored?.take).toMatchObject({ status: "ok", text: "A quiet count in Praia." });
+    expect(stored?.pieces[0]?.paragraphs).toEqual(["The assembly met at dusk in Praia."]);
   });
 
   it("does not bind an empty selection", async () => {
