@@ -78,7 +78,7 @@ describe("Keep / Select press board", () => {
     expect(css).toMatch(/html:has\(\.stage\),[\s\S]*body:has\(\.stage\) \{[\s\S]*var\(--binding\)/);
   });
 
-  it("keeps Read as cloth + one sheet and does not start Print", () => {
+  it("keeps Read as cloth + one sheet and keeps Print off Keep / Select", () => {
     const read = readFileSync("src/routes/read.$id.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
     const keep = readFileSync("src/routes/index.tsx", "utf8");
@@ -86,8 +86,9 @@ describe("Keep / Select press board", () => {
     expect(read.match(/<article/g)?.length).toBe(1);
     expect(css).toMatch(/\.stage \{[\s\S]*var\(--binding\)/);
     expect(css).toMatch(/\.sheet \{[\s\S]*background: var\(--paper\)/);
-    expect(keep).not.toMatch(/Print this issue|window\.print|printIssue/);
-    expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
+    expect(keep).not.toMatch(/printThisIssue|Print this issue|window\.print|printIssue/);
+    expect(read).toMatch(/printThisIssue/);
+    expect(read).toMatch(/className="stage-print"/);
   });
 
   it("keeps two families only, locked tokens, and no Press or /clips", () => {

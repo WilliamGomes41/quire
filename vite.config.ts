@@ -7,5 +7,6 @@ export default defineConfig({
   server: {
     port: 3000,
   },
+  assetsInclude: ["**/*.ttf"],
   plugins: [tanstackStart(), nitro(), viteReact()],
 });
