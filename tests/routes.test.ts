@@ -89,26 +89,34 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/host && topic/);
   });
 
-  it("does not put COMMENT or type badges on the board", () => {
+  it("puts Grok contentType on the keep card, not a loud COMMENT pill", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).not.toMatch(/paperBadgeLabel/);
-    expect(keep).not.toMatch(/className="badge"/);
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
+    expect(keep).toMatch(/className="badge"/);
     expect(keep).not.toMatch(/\bCOMMENT\b/);
+    const related = keep.slice(keep.indexOf("function RelatedItem"));
+    expect(related).not.toMatch(/paperBadgeLabel|className="badge"/);
+    expect(css).toMatch(/\.badge \{[\s\S]*border:\s*1px solid var\(--ink\)/);
+    expect(css).not.toMatch(/\.badge \{[^}]*text-transform:\s*uppercase/);
   });
 
   it("keeps related titles as quiet include, not off-site links or Read", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).toMatch(/relatedRow\(page\)/);
-    expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
+    expect(keep).toMatch(/className="related-title"/);
+    expect(keep).toMatch(/\{row\.title\}/);
     expect(keep).toMatch(/moreOnThisTopic/);
     expect(keep).toMatch(/<h3>/);
     expect(keep).toMatch(/className="tally"/);
     expect(keep).toMatch(/inLabel/);
+    expect(keep).toMatch(/const \[open, setOpen\] = useState\(false\)/);
+    expect(keep).toMatch(/aria-expanded=\{open\}/);
     expect(keep).not.toMatch(/<a href=\{page\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
     expect(keep).not.toMatch(/to="\/read\/\$id" params=\{\{ id: page/);
-    expect(keep).not.toMatch(/aria-expanded/);
+    expect(keep).not.toMatch(/<details|<summary/);
   });
 
   it("shows the stored related snippet, or publisher · date when there is no snippet", () => {
