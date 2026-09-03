@@ -78,6 +78,8 @@ describe("Read composition", () => {
       "The harbour vote",
       "A second dispatch",
     ]);
+    expect(page.contents.folio).toBe("02");
+    expect(page.contents.folio).toMatch(/^\d+$/);
     expect(page.contents.rows.map((row) => row.folio)).toEqual(["03", "04"]);
     expect(page.sequence).toHaveLength(2);
     expect(page.sequence.map((sheet) => sheet.folio)).toEqual(["03", "04"]);
