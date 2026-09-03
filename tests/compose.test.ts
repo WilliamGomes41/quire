@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { composeIssue, readingSheets } from "../src/lib/compose";
+import {
+  clampSheetIndex,
+  composeIssue,
+  nextSheetIndex,
+  pieceSheetIndex,
+  previousSheetIndex,
+  readingSheets,
+} from "../src/lib/compose";
 import type { BoundIssue } from "../src/lib/bind";
 import { defaultFigureFit, designContract } from "../src/lib/design";
 
@@ -97,6 +104,36 @@ describe("Read composition", () => {
     expect(page.cover.masthead).toBe("Quire");
   });
 
+  it("maps TOC rows and next onto the same sheet index", () => {
+    const page = composeIssue({
+      ...issue,
+      pieces: [
+        ...issue.pieces,
+        {
+          url: "https://news.example/one",
+          role: "related",
+          headline: "A second dispatch",
+          paragraphs: ["Another reporter stood on the quay."],
+        },
+      ],
+    });
+    const sheets = readingSheets(page);
+    expect(sheets.map((sheet) => sheet.kind)).toEqual(["cover", "contents", "piece", "piece"]);
+    expect(pieceSheetIndex(0)).toBe(2);
+    expect(pieceSheetIndex(1)).toBe(3);
+    expect(sheets[pieceSheetIndex(0)]).toEqual({ kind: "piece", index: 0 });
+    expect(sheets[pieceSheetIndex(1)]).toEqual({ kind: "piece", index: 1 });
+    expect(nextSheetIndex(0, sheets.length)).toBe(1);
+    expect(nextSheetIndex(1, sheets.length)).toBe(2);
+    expect(nextSheetIndex(2, sheets.length)).toBe(3);
+    expect(nextSheetIndex(3, sheets.length)).toBe(3);
+    expect(previousSheetIndex(0, sheets.length)).toBe(0);
+    expect(previousSheetIndex(2, sheets.length)).toBe(1);
+    expect(clampSheetIndex(99, sheets.length)).toBe(3);
+    expect(page.contents.rows[0]?.folio).toBe(page.sequence[0]?.folio);
+    expect(page.contents.rows[1]?.folio).toBe(page.sequence[1]?.folio);
+  });
+
   it("omits the cover kicker unless bind already has a source-owned cover line", () => {
     const page = composeIssue({
       ...issue,
@@ -147,5 +184,35 @@ describe("Read composition", () => {
     });
     expect(page.sequence[0]?.figure?.fit).toBe("contain");
     expect(page.intent.composition).toBe("visual-opener");
+  });
+
+  it("maps TOC rows and next onto the same sheet index", () => {
+    const page = composeIssue({
+      ...issue,
+      pieces: [
+        ...issue.pieces,
+        {
+          url: "https://news.example/one",
+          role: "related",
+          headline: "A second dispatch",
+          paragraphs: ["Another reporter stood on the quay."],
+        },
+      ],
+    });
+    const sheets = readingSheets(page);
+    expect(sheets.map((sheet) => sheet.kind)).toEqual(["cover", "contents", "piece", "piece"]);
+    expect(pieceSheetIndex(0)).toBe(2);
+    expect(pieceSheetIndex(1)).toBe(3);
+    expect(sheets[pieceSheetIndex(0)]).toEqual({ kind: "piece", index: 0 });
+    expect(sheets[pieceSheetIndex(1)]).toEqual({ kind: "piece", index: 1 });
+    expect(nextSheetIndex(0, sheets.length)).toBe(1);
+    expect(nextSheetIndex(1, sheets.length)).toBe(2);
+    expect(nextSheetIndex(2, sheets.length)).toBe(3);
+    expect(nextSheetIndex(3, sheets.length)).toBe(3);
+    expect(previousSheetIndex(0, sheets.length)).toBe(0);
+    expect(previousSheetIndex(2, sheets.length)).toBe(1);
+    expect(clampSheetIndex(99, sheets.length)).toBe(3);
+    expect(page.contents.rows[0]?.folio).toBe(page.sequence[0]?.folio);
+    expect(page.contents.rows[1]?.folio).toBe(page.sequence[1]?.folio);
   });
 });

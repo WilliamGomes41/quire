@@ -181,3 +181,21 @@ export function readingSheets(page: PagePlan): ReadingSheet[] {
     ...page.sequence.map((_, index) => ({ kind: "piece" as const, index })),
   ];
 }
+
+/** Same object: cover 0, contents 1, pieces after that. */
+export function pieceSheetIndex(pieceIndex: number): number {
+  return 2 + pieceIndex;
+}
+
+export function clampSheetIndex(index: number, count: number): number {
+  if (count <= 0) return 0;
+  return Math.min(count - 1, Math.max(0, index));
+}
+
+export function nextSheetIndex(index: number, count: number): number {
+  return clampSheetIndex(index + 1, count);
+}
+
+export function previousSheetIndex(index: number, count: number): number {
+  return clampSheetIndex(index - 1, count);
+}

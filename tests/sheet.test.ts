@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { composeIssue, readingSheets } from "../src/lib/compose";
+import { composeIssue, nextSheetIndex, pieceSheetIndex, readingSheets } from "../src/lib/compose";
 import type { BoundIssue } from "../src/lib/bind";
 import { kicker } from "../src/copy";
 
@@ -24,9 +24,10 @@ const issue: BoundIssue = {
 describe("bound magazine sheet", () => {
   it("Read is cover / contents / sequence, not opener + Take aside", () => {
     const read = readFileSync("src/routes/read.$id.tsx", "utf8");
-    expect(read).toMatch(/data-sheet="cover"/);
-    expect(read).toMatch(/data-sheet="contents"/);
-    expect(read).toMatch(/data-sheet="piece"/);
+    expect(read).toMatch(/data-sheet=\{kind\}/);
+    expect(read).toMatch(/sheet-cover/);
+    expect(read).toMatch(/sheet-contents/);
+    expect(read).toMatch(/sheet-piece/);
     expect(read).toMatch(/readingSheets\(page\)/);
     expect(read).toMatch(/current\?\.kind === "cover"/);
     expect(read).toMatch(/current\?\.kind === "contents"/);
@@ -46,7 +47,6 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/Inside ·/);
     expect(read).not.toMatch(/Inside/);
     expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
-    expect(read).not.toMatch(/toc-row[\s\S]{0,120}onClick/);
   });
 
   it("does not print a Take kicker or a raw source URL as the folio", () => {
@@ -212,5 +212,59 @@ describe("bound magazine sheet", () => {
     expect(save).toMatch(/persistUnderstanding/);
     expect(save).toMatch(/persistRelated/);
     expect(save).toMatch(/persistSourceHeadline/);
+  });
+
+  it("lets TOC reach sheets and next advance the same object", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    const page = composeIssue(issue);
+    const sheets = readingSheets(page);
+
+    expect(read.match(/<article/g)?.length).toBe(1);
+    expect(read).toMatch(/goTo\(/);
+    expect(read).toMatch(/pieceSheetIndex\(rowIndex\)/);
+    expect(read).toMatch(/nextSheetIndex\(index, sheets\.length\)/);
+    expect(read).toMatch(/previousSheetIndex\(index, sheets\.length\)/);
+    expect(read).toMatch(/className="toc-row"/);
+    expect(read).toMatch(/toc-row[\s\S]{0,80}onClick/);
+    expect(read).toMatch(/is-turning/);
+    expect(read).not.toMatch(/sheets\.map/);
+    expect(read).not.toMatch(/className="spread"/);
+    expect(read).not.toMatch(/isMobile|useMediaQuery|desktopSpread|mobileSheet/);
+    expect(read).not.toMatch(/page-flip|stpageflip|turn\.js|react-pageflip|pageflip/i);
+
+    expect(pieceSheetIndex(0)).toBe(2);
+    expect(sheets[pieceSheetIndex(0)]?.kind).toBe("piece");
+    expect(nextSheetIndex(0, sheets.length)).toBe(1);
+    expect(nextSheetIndex(1, sheets.length)).toBe(2);
+    expect(nextSheetIndex(2, sheets.length)).toBe(2);
+
+    expect(css).toMatch(/\.sheet\.is-turning/);
+    expect(css).toMatch(/translateX\(-3\.5%\) rotate\(-0\.55deg\)/);
+    expect(css).not.toMatch(/page-curl|curl-corner|flip-book|page-flip|stpageflip/i);
+    expect(css).not.toMatch(/perspective|rotateY/i);
+    expect(css).not.toMatch(/two-page|page-spread|verso|recto/i);
+  });
+
+  it("keeps mobile as a single-column same object, not a pinch-PDF", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    const pkg = readFileSync("package.json", "utf8");
+    const lock = readFileSync("package-lock.json", "utf8");
+
+    expect(css).toMatch(/@media \(max-width: 48rem\) \{[\s\S]*flex-direction:\s*column/);
+    expect(css).toMatch(/@media \(max-width: 48rem\) \{[\s\S]*column-count:\s*1/);
+    expect(css).toMatch(/@media \(max-width: 48rem\) \{[\s\S]*\.toc-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) auto/);
+    expect(read).not.toMatch(/matchMedia\(["']\(max-width/);
+    expect(read).not.toMatch(/isMobile|useMediaQuery/);
+    expect(read.match(/<article/g)?.length).toBe(1);
+
+    expect(read).not.toMatch(/pdfjs|pdf\.js|react-pdf|application\/pdf|embed.*pdf|iframe.*pdf/i);
+    expect(css).not.toMatch(/pinch-zoom|touch-action:\s*pinch-zoom/i);
+    expect(pkg).not.toMatch(/pdfjs|react-pdf|page-flip|stpageflip|react-pageflip|turn\.js/i);
+    expect(lock).not.toMatch(/page-flip|stpageflip|react-pageflip|turn\.js/i);
+    expect(read).not.toMatch(/\bPress\b/);
+    expect(read).not.toMatch(/\/clips\/\$/);
+    expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
   });
 });
