@@ -467,6 +467,32 @@ describe("Keep persists a source headline fail-closed", () => {
     expect(store.rows.has(failed.id)).toBe(true);
   });
 
+  it("still keeps a 403 headline fail and does not invent a title", async () => {
+    const { couldNotReadHeadline, sourceHeadlineCopy } = await import("../src/copy");
+    const store = memoryStore();
+    const failed = await saveClip({ url: "https://example.com/headline-403" }, store, {
+      readHeadline: async () => {
+        throw new Error(`${couldNotReadHeadline} (403)`);
+      },
+      understand: async () => {
+        throw new Error("model down");
+      },
+      searchPages: quietSearch,
+    });
+    expect(store.rows.has(failed.id)).toBe(true);
+    expect(failed.url).toBe("https://example.com/headline-403");
+    expect(failed.sourceHeadline).toMatchObject({
+      status: "failed",
+      message: `${couldNotReadHeadline} (403)`,
+    });
+    expect(failed.sourceHeadline?.status).not.toBe("empty");
+    expect(failed.sourceHeadline).not.toMatchObject({ status: "ok", text: expect.anything() });
+    const spoken = sourceHeadlineCopy(failed.sourceHeadline!);
+    expect(spoken.kind).toBe("fail");
+    expect(spoken.text).toBe(`${couldNotReadHeadline} (403)`);
+    expect(spoken.text.match(/Could not read a headline from the source\./g)).toHaveLength(1);
+  });
+
   it("does not roll back Keep when persist of the headline fail throws", async () => {
     const store = memoryStore();
     store.persistSourceHeadline = async () => {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   couldNotFetchWords,
   couldNotLook,
+  couldNotReadHeadline,
   couldNotUnderstand,
   createIssueLabel,
   dek,
@@ -97,5 +98,15 @@ describe("product voice", () => {
     expect(sourceHeadlineCopy({ status: "empty" }).text).not.toBe(
       sourceHeadlineCopy({ status: "failed" }).text,
     );
+  });
+
+  it("speaks a stored 403 headline fail once, including the status", () => {
+    const stored = `${couldNotReadHeadline} (403)`;
+    const spoken = sourceHeadlineCopy({ status: "failed", message: stored });
+    expect(spoken.kind).toBe("fail");
+    expect(spoken.text).toBe(stored);
+    expect(spoken.text).toMatch(/\(403\)/);
+    expect(spoken.text.match(/Could not read a headline from the source\./g)).toHaveLength(1);
+    expect(sourceHeadlineCopy({ status: "empty" }).text).not.toBe(spoken.text);
   });
 });

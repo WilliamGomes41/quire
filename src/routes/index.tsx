@@ -358,7 +358,6 @@ function BindCard({
       {headlineSpoken ? (
         <p className={headlineSpoken.kind === "fail" ? "fail" : "empty"}>
           {headlineSpoken.text}
-          {clip.sourceHeadline?.status === "failed" ? ` ${clip.sourceHeadline.message}` : ""}
         </p>
       ) : null}
       <UnderstandingFail clip={clip} />

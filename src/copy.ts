@@ -77,14 +77,21 @@ export const printThisIssue = "Print this issue";
 
 export const couldNotPrint = "Could not print this issue.";
 
-export function sourceHeadlineCopy(input: { status: "ok" | "empty" | "failed" }) {
+export function sourceHeadlineCopy(input: { status: "ok" | "empty" | "failed"; message?: string }) {
   if (input.status === "ok") {
     return { kind: "ok" as const, text: "" };
   }
   if (input.status === "empty") {
     return { kind: "empty" as const, text: noHeadlineOnSource };
   }
-  return { kind: "fail" as const, text: couldNotReadHeadline };
+  const stored = (input.message ?? "").trim();
+  if (stored.includes(couldNotReadHeadline)) {
+    return { kind: "fail" as const, text: stored };
+  }
+  if (!stored) {
+    return { kind: "fail" as const, text: couldNotReadHeadline };
+  }
+  return { kind: "fail" as const, text: `${couldNotReadHeadline} ${stored}` };
 }
 
 export function moreOnThisTopicCopy(input: {
