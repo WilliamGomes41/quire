@@ -36,10 +36,11 @@ main {
 
 main:has(> .board) {
   max-width: 68rem;
+  padding: 2rem 2.25rem 5rem;
 }
 
-main:has(> .board) > :not(.board) {
-  max-width: 36rem;
+main:has(> .board) > .site {
+  max-width: none;
 }
 
 .kicker {
@@ -55,6 +56,40 @@ form {
   display: grid;
   gap: 0.75rem;
   margin: 1.5rem 0;
+}
+
+.site {
+  padding-bottom: 1.35rem;
+  border-bottom: 1px solid var(--binding);
+}
+
+.site-masthead {
+  font-family: var(--font-serif);
+  font-size: 1.7rem;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 1;
+}
+
+form.keep {
+  display: flex;
+  align-items: stretch;
+  gap: 0.65rem;
+  max-width: 28rem;
+  margin: 1.1rem 0 0;
+}
+
+form.keep input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.45rem 0;
+  border: 0;
+  border-bottom: 1px solid var(--binding);
+  background: transparent;
+}
+
+form.keep button {
+  align-self: stretch;
 }
 
 input,
@@ -102,6 +137,16 @@ nav {
   margin-bottom: 2rem;
 }
 
+.site nav {
+  margin-bottom: 0;
+}
+
+.site nav a {
+  font-size: 0.85rem;
+  color: var(--binding);
+  text-decoration: none;
+}
+
 .rail {
   margin-top: 0.65rem;
   padding-top: 0.75rem;
@@ -139,12 +184,14 @@ nav {
 }
 
 .board {
-  margin-top: 2.5rem;
+  margin-top: 2.75rem;
 }
 
 .board h2 {
-  font-size: 1.45rem;
-  margin: 0 0 0.4rem;
+  font-size: 1.15rem;
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--binding);
 }
 
 .cards,
@@ -152,11 +199,15 @@ nav {
   list-style: none;
   padding: 0;
   display: grid;
-  gap: 1.5rem;
+  gap: 2.5rem 2.75rem;
 }
 
 @media (min-width: 48rem) {
   .cards {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .covers {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -164,16 +215,17 @@ nav {
 .card,
 .cover {
   display: grid;
-  gap: 0.65rem;
-  padding: 1.25rem 1.2rem 1.35rem;
-  border: 1px solid color-mix(in srgb, var(--ink) 12%, var(--paper));
-  background: color-mix(in srgb, var(--paper) 88%, white);
-  box-shadow: 0 10px 28px color-mix(in srgb, var(--ink) 6%, transparent);
+  gap: 0.7rem;
+  padding: 0 0 1.6rem;
+  border: 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--binding) 38%, var(--paper));
+  background: transparent;
+  box-shadow: none;
 }
 
 .card header {
   display: grid;
-  gap: 0.35rem;
+  gap: 0.4rem;
 }
 
 .card .folio {
@@ -181,22 +233,32 @@ nav {
   color: color-mix(in srgb, var(--ink) 68%, var(--paper));
 }
 
+.card .note {
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.45;
+}
+
 .card .figure {
   display: block;
-  margin: 0.15rem 0 0;
+  margin: 0 0 0.15rem;
 }
 
 .card .figure img {
   display: block;
   width: 100%;
-  max-height: 9rem;
+  max-height: 16rem;
   object-fit: contain;
-  background: color-mix(in srgb, var(--ink) 6%, var(--paper));
+  background: var(--paper);
 }
 
 .card .display {
-  font-size: 1.45rem;
-  line-height: 1.2;
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
   margin: 0;
 }
 
@@ -243,13 +305,20 @@ button:disabled {
 .cover {
   text-decoration: none;
   color: inherit;
-  min-height: 9rem;
+  min-height: 0;
   align-content: start;
 }
 
 .cover .display {
-  font-size: 1.45rem;
-  line-height: 1.2;
+  font-family: var(--font-serif);
+  font-size: 1.75rem;
+  font-weight: 600;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+
+.board > button {
+  margin-top: 1.75rem;
 }
 
 .choice {
@@ -269,7 +338,7 @@ button:disabled {
 }
 
 .card.in {
-  border-color: color-mix(in srgb, var(--binding) 28%, var(--paper));
+  border-bottom-color: var(--binding);
 }
 
 .page {
