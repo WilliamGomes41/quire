@@ -346,11 +346,12 @@ function BindCard({
       <p className="actions">
         <button
           type="button"
-          className="quiet"
+          className="include"
           aria-pressed={choice.includeOriginal}
+          aria-label={inLabel}
           onClick={() => onChoice({ ...choice, includeOriginal: !choice.includeOriginal })}
         >
-          {inLabel}
+          <span className="tick" aria-hidden />
         </button>
         <a className="source" href={clip.url} target="_blank" rel="noreferrer">
           {host || sourceLabel}
@@ -476,8 +477,14 @@ function RelatedItem({
       <span>{row.title}</span>
       {row.snippet ? <span className="note">{row.snippet}</span> : null}
       {row.detail ? <span className="folio">{row.detail}</span> : null}
-      <button type="button" className="quiet" aria-pressed={on} onClick={() => onToggle(page.url, !on)}>
-        {inLabel}
+      <button
+        type="button"
+        className="include"
+        aria-pressed={on}
+        aria-label={inLabel}
+        onClick={() => onToggle(page.url, !on)}
+      >
+        <span className="tick" aria-hidden />
       </button>
     </li>
   );

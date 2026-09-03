@@ -33,6 +33,7 @@ describe("Keep / Select press board", () => {
     expect(keep).toMatch(/\{row\.title\}/);
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
     expect(keep).toMatch(/inLabel/);
+    expect(keep).toMatch(/className="include"/);
     expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).not.toMatch(/<details|<summary/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
@@ -105,11 +106,14 @@ describe("Keep / Select press board", () => {
     expect(families).toEqual(["Source+Sans+3", "Source+Serif+4"]);
     expect(css).toMatch(/--font-sans:\s*"Source Sans 3"/);
     expect(css).toMatch(/--font-serif:\s*"Source Serif 4"/);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
-    expect(css).not.toMatch(/#faf7f1|#161513|#1e2a24|#1e4a6a|#2a332c/i);
+    expect(css).toMatch(/--binding: #4a5c56;/);
+    expect(css).not.toMatch(/#161513|#1e2a24|#1e4a6a|#261e18|#4f6f5c|#5b8aa3|#2a332c|#ffffff|#f3eee4|#3d4a3a/i);
     expect(css).not.toMatch(/--mark:/);
+    expect(css).toMatch(/html,\s*body \{[\s\S]*background:\s*var\(--paper\)/);
+    expect(css).not.toMatch(/main:has\(> \.board\) \{[^}]*background:\s*var\(--binding\)/);
+    expect(css).toMatch(/\.stage \{[^}]*var\(--binding\)/);
     expect(css).not.toMatch(/Playfair|Fraunces|Newsreader|Instrument|Cormorant|Libre Baskerville|IBM Plex|Inter["']/);
     expect(keep).not.toMatch(/\/clips\/\$/);
     expect(keep).not.toMatch(/\bPress\b/);
@@ -129,5 +133,20 @@ describe("Keep / Select press board", () => {
     expect(keep).toMatch(/className="source"/);
     expect(save).toMatch(/persistSourceHeadline/);
     expect(save).toMatch(/store\.insert\(/);
+  });
+
+  it("draws include as ink on paper, not an OS checkbox or a mark token", () => {
+    const css = readFileSync("src/styles.css", "utf8");
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    expect(keep).toMatch(/className="include"/);
+    expect(keep).toMatch(/aria-label=\{inLabel\}/);
+    expect(keep).toMatch(/className="tick"/);
+    expect(keep).not.toMatch(/type="checkbox"/);
+    expect(css).toMatch(/button\.include \{[\s\S]*background:\s*transparent/);
+    expect(css).toMatch(/button\.include \{[\s\S]*border:\s*1px solid var\(--ink\)/);
+    expect(css).toMatch(/button\.include\[aria-pressed="true"\] \{[\s\S]*background:\s*var\(--ink\)/);
+    expect(css).toMatch(/button\.include \.tick \{[\s\S]*border-right:\s*1\.5px solid var\(--paper\)/);
+    expect(css).not.toMatch(/accent-color|--mark:/);
+    expect(css).not.toMatch(/#ffffff|#2a332c|#f3eee4|#3d4a3a|#4f6f5c/i);
   });
 });
