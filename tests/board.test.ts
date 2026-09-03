@@ -106,10 +106,10 @@ describe("Keep / Select press board", () => {
     expect(families).toEqual(["Source+Sans+3", "Source+Serif+4"]);
     expect(css).toMatch(/--font-sans:\s*"Source Sans 3"/);
     expect(css).toMatch(/--font-serif:\s*"Source Serif 4"/);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
-    expect(css).not.toMatch(/#faf7f1|#161513|#1e2a24|#1e4a6a|#261e18|#4f6f5c|#5b8aa3|#2a332c|#ffffff|#4a5c56/i);
+    expect(css).toMatch(/--binding: #4a5c56;/);
+    expect(css).not.toMatch(/#161513|#1e2a24|#1e4a6a|#261e18|#4f6f5c|#5b8aa3|#2a332c|#ffffff|#f3eee4|#3d4a3a/i);
     expect(css).not.toMatch(/--mark:/);
     expect(css).toMatch(/html,\s*body \{[\s\S]*background:\s*var\(--paper\)/);
     expect(css).not.toMatch(/main:has\(> \.board\) \{[^}]*background:\s*var\(--binding\)/);
@@ -147,6 +147,6 @@ describe("Keep / Select press board", () => {
     expect(css).toMatch(/button\.include\[aria-pressed="true"\] \{[\s\S]*background:\s*var\(--ink\)/);
     expect(css).toMatch(/button\.include \.tick \{[\s\S]*border-right:\s*1\.5px solid var\(--paper\)/);
     expect(css).not.toMatch(/accent-color|--mark:/);
-    expect(css).not.toMatch(/#ffffff|#2a332c|#4f6f5c|#faf7f1|#161513|#1e2a24|#1e4a6a|#4a5c56/i);
+    expect(css).not.toMatch(/#ffffff|#2a332c|#f3eee4|#3d4a3a|#4f6f5c|#161513|#1e2a24|#1e4a6a|#261e18|#5b8aa3/i);
   });
 });

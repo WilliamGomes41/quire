@@ -182,9 +182,9 @@ describe("kept card does not leak to the source", () => {
     expect(css).toMatch(/@media \(min-width: 48rem\) \{[\s\S]*\.cards \{[\s\S]*grid-template-columns: 1fr 1fr;/);
     expect(css).toMatch(/main:has\(> \.board\) \{[\s\S]*max-width: 68rem;/);
     expect(css).toMatch(/main:has\(> \.board\) > \.site \{[\s\S]*max-width: none;/);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
   });
 
   it("does not fetch OG images as a second Keep pass", () => {
@@ -211,9 +211,9 @@ describe("kept card does not leak to the source", () => {
     const css = readFileSync("src/styles.css", "utf8");
     expect(keep).not.toMatch(/lucide-react|sonner|@\/components\/ui|TopicRail|ExternalLink|Trash2/);
     expect(css).not.toMatch(/mute-pine|#3d5a4c|#2f4f3e/i);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
   });
 
   it("lets Keep show pending so mashed clicks do not duplicate", () => {

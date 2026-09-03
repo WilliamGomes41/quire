@@ -97,7 +97,7 @@ describe("bound magazine sheet", () => {
     expect(read).not.toMatch(/className="spread"/);
     expect(read).not.toMatch(/className="page issue"/);
     expect(css).toMatch(/\.stage \{[\s\S]*var\(--binding\)/);
-    expect(css).toMatch(/\.stage \{[\s\S]*#1c1814/);
+    expect(css).toMatch(/\.stage \{[\s\S]*var\(--ink\)/);
     expect(css).not.toMatch(/\.stage \{[\s\S]*#000/);
     expect(css).not.toMatch(/\.stage \{[\s\S]*#111/);
     expect(css).not.toMatch(/wood|#5c4033|#8b5a2b|#3e2723/i);
@@ -110,9 +110,9 @@ describe("bound magazine sheet", () => {
     expect(css).not.toMatch(/\.sheet:hover \{[^}]*translateY/);
     expect(css).not.toMatch(/rounded-\[28px\]/);
     expect(css).not.toMatch(/mute-pine|#3d5a4c|#2f4f3e/i);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
     expect(keep).not.toMatch(/className="stage"/);
     expect(keep).toMatch(/className="card/);
   });
@@ -191,9 +191,9 @@ describe("bound magazine sheet", () => {
     expect(css).toMatch(/\.sheet-piece \.piece-header h2 \{[\s\S]*font-weight:\s*600/);
     expect(css).toMatch(/\.take \{[\s\S]*font-style:\s*italic/);
     expect(css).toMatch(/\.take \{[\s\S]*border-top:\s*1px solid var\(--ink\)/);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
 
     expect(read).not.toMatch(/Inside ·/);
     expect(read).not.toMatch(/Inside/);
