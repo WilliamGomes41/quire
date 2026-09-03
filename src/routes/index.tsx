@@ -9,6 +9,7 @@ import {
   emptyState,
   inLabel,
   keptNote,
+  moreOnThisTopic,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
   nothingSelected,
@@ -408,7 +409,6 @@ function RelatedSelect({
   selected: string[];
   onToggle: (url: string, on: boolean) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const rail = clip.relatedRail;
   if (!rail) return null;
 
@@ -435,29 +435,22 @@ function RelatedSelect({
 
   const visible = relatedVisible(pages, selected);
   const collapsed = relatedCollapsed(pages, selected);
-  const count = relatedCountLabel(collapsed.length);
+  const count = relatedCountLabel(pages.length);
 
   return (
     <section className="rail">
-      {visible.length > 0 ? (
-        <ul>
-          {visible.map((page) => (
-            <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
-          ))}
-        </ul>
-      ) : null}
-      {count ? (
-        <button type="button" className="quiet" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
-          {count}
-        </button>
-      ) : null}
-      {open && collapsed.length > 0 ? (
-        <ul>
-          {collapsed.map((page) => (
-            <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
-          ))}
-        </ul>
-      ) : null}
+      <h3>
+        {moreOnThisTopic}
+        {count ? <span className="tally">{count}</span> : null}
+      </h3>
+      <ul>
+        {visible.map((page) => (
+          <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+        ))}
+        {collapsed.map((page) => (
+          <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+        ))}
+      </ul>
     </section>
   );
 }

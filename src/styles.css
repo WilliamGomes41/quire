@@ -90,6 +90,13 @@ form.keep input {
 
 form.keep button {
   align-self: stretch;
+  padding: 0.8rem 1.2rem;
+  transition: background-color 200ms ease, box-shadow 200ms ease;
+}
+
+form.keep button:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--binding) 82%, var(--ink));
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
 input,
@@ -154,13 +161,26 @@ nav {
 }
 
 .rail h3 {
-  font-family: "Source Sans 3", system-ui, sans-serif;
+  display: flex;
+  align-items: baseline;
+  gap: 0.45rem;
+  font-family: var(--font-sans);
   font-size: 0.72rem;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   font-weight: 600;
   color: color-mix(in srgb, var(--ink) 58%, var(--paper));
   margin: 0 0 0.3rem;
+}
+
+.rail .tally {
+  font-size: 0.65rem;
+  letter-spacing: 0.04em;
+  font-weight: 600;
+  text-transform: none;
+  color: color-mix(in srgb, var(--ink) 58%, var(--paper));
+  border: 1px solid color-mix(in srgb, var(--ink) 16%, var(--paper));
+  padding: 0.05rem 0.35rem;
 }
 
 .rail ul {
@@ -181,10 +201,6 @@ nav {
   margin: 0;
   font-size: 0.82rem;
   color: color-mix(in srgb, var(--ink) 62%, var(--paper));
-}
-
-.rail > button.quiet {
-  margin-top: 0.45rem;
 }
 
 .board {
@@ -220,11 +236,18 @@ nav {
 .cover {
   display: grid;
   gap: 0.7rem;
-  padding: 0 0 1.6rem;
+  padding: 0.75rem 0.85rem 1.4rem;
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--binding) 38%, var(--paper));
-  background: transparent;
+  background: var(--paper);
   box-shadow: none;
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.card:hover,
+.covers .cover:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
 .card header {
@@ -261,7 +284,7 @@ nav {
   font-family: var(--font-serif);
   font-size: 1.75rem;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.28;
   letter-spacing: -0.02em;
   margin: 0;
 }
@@ -353,7 +376,7 @@ button:disabled {
   font-family: var(--font-serif);
   font-size: 1.75rem;
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.28;
   letter-spacing: -0.02em;
 }
 
@@ -466,8 +489,17 @@ body:has(.stage) {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .card,
+  .covers .cover,
+  form.keep button,
   .sheet {
     transition: none;
+  }
+
+  .card:hover,
+  .covers .cover:hover {
+    transform: none;
+    box-shadow: none;
   }
 
   .sheet.is-turning,

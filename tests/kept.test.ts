@@ -177,7 +177,7 @@ describe("related row is readable without leaving Select", () => {
 });
 
 describe("related roll in and out", () => {
-  it("keeps selected related visible and unselected in the collapsed set", () => {
+  it("keeps selected related first and unselected as suggestions", () => {
     const pages = [
       { url: "https://news.example/one", title: "One" },
       { url: "https://news.example/two", title: "Two" },
