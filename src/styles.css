@@ -236,7 +236,7 @@ nav {
 .cover {
   display: grid;
   gap: 0.7rem;
-  padding: 0 0 1.6rem;
+  padding: 0.75rem 0.85rem 1.4rem;
   border: 0;
   border-bottom: 1px solid color-mix(in srgb, var(--binding) 38%, var(--paper));
   background: var(--paper);
@@ -247,7 +247,7 @@ nav {
 .card:hover,
 .covers .cover:hover {
   transform: translateY(-3px);
-  box-shadow: 0 6px 16px color-mix(in srgb, var(--ink) 12%, transparent);
+  box-shadow: 0 8px 18px color-mix(in srgb, var(--ink) 16%, transparent);
 }
 
 .card header {
