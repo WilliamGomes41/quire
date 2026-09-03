@@ -89,16 +89,21 @@ describe("kept card does not leak to the source", () => {
     expect(keep).not.toMatch(/host && topic/);
   });
 
-  it("puts Grok contentType on the keep card, not a loud COMMENT pill", () => {
+  it("puts the board mark on the keep card, Opinion not Comment, not a loud COMMENT pill", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
+    const understanding = readFileSync("src/lib/understanding.ts", "utf8");
     expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
-    expect(keep).toMatch(/className="badge"/);
+    expect(keep).toMatch(/className="badge" data-mark=\{kind\}/);
     expect(keep).not.toMatch(/\bCOMMENT\b/);
+    expect(keep).not.toMatch(/>Comment</);
     const related = keep.slice(keep.indexOf("function RelatedItem"));
-    expect(related).not.toMatch(/paperBadgeLabel|className="badge"/);
-    expect(css).toMatch(/\.badge \{[\s\S]*border:\s*1px solid var\(--ink\)/);
-    expect(css).not.toMatch(/\.badge \{[^}]*text-transform:\s*uppercase/);
+    expect(related).not.toMatch(/paperBadgeLabel|className="badge"|data-mark/);
+    expect(css).toMatch(/\.badge\[data-mark="Opinion"\]/);
+    expect(css).not.toMatch(/data-mark="Comment"/);
+    expect(css).not.toMatch(/\.badge[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(understanding).toMatch(/contentTypes = \["News", "Comment", "Study", "Notice"\]/);
+    expect(understanding).not.toMatch(/"Opinion"/);
   });
 
   it("keeps related titles as quiet include, not off-site links or Read", () => {

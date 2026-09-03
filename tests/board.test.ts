@@ -160,19 +160,39 @@ describe("Keep / Select press board", () => {
     expect(keep).not.toMatch(/lucide-react|sonner|Trash2/);
     expect(keep).not.toMatch(/\bCOMMENT\b/);
     expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
-    expect(css).toMatch(/\.badge \{[\s\S]*color:\s*var\(--ink\)/);
-    expect(css).toMatch(/\.badge \{[\s\S]*background:\s*var\(--paper\)/);
-    expect(css).toMatch(/\.badge \{[\s\S]*border:\s*1px solid var\(--ink\)/);
-    expect(css).not.toMatch(/\.badge \{[^}]*text-transform:\s*uppercase/);
+    expect(css).toMatch(
+      /\.badge\[data-mark="News"\] \{[^}]*background:\s*var\(--ink\)[^}]*color:\s*var\(--paper\)[^}]*border:\s*1px solid var\(--ink\)/,
+    );
+    expect(css).toMatch(
+      /\.badge\[data-mark="Opinion"\] \{[^}]*background:\s*var\(--binding\)[^}]*color:\s*var\(--paper\)[^}]*border:\s*1px solid var\(--binding\)/,
+    );
+    expect(css).toMatch(
+      /\.badge\[data-mark="Study"\] \{[^}]*background:\s*var\(--paper\)[^}]*color:\s*var\(--ink\)[^}]*border:\s*1px solid var\(--ink\)/,
+    );
+    expect(css).toMatch(
+      /\.badge\[data-mark="Notice"\] \{[^}]*background:\s*var\(--paper\)[^}]*color:\s*var\(--binding\)[^}]*border:\s*1px solid var\(--binding\)/,
+    );
+    const marks = [...css.matchAll(/\.badge\[data-mark="[^"]+"\] \{[^}]+\}/g)].map((match) => match[0]);
+    expect(marks).toHaveLength(4);
+    for (const mark of marks) {
+      expect(mark).toMatch(/var\(--(?:paper|ink|binding)\)/);
+      expect(mark).not.toMatch(/#[0-9a-f]{3,8}/i);
+      expect(mark).not.toMatch(/--mark|rgb\(|hsl\(|blue|purple|Inter/i);
+    }
+    expect(css).not.toMatch(/\.badge[^{]*\{[^}]*text-transform:\s*uppercase/);
+    expect(css).not.toMatch(/data-mark="Comment"/);
+    expect(css).not.toMatch(/--mark:/);
   });
 
-  it("puts Grok contentType on the keep card only when understanding is ok", () => {
+  it("puts the board mark on the keep card only when understanding is ok", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
-    expect(keep).toMatch(/kind \? <span className="badge">\{kind\}<\/span> : null/);
+    expect(keep).toMatch(/className="badge" data-mark=\{kind\}/);
+    expect(keep).toMatch(/\{kind\}/);
     const related = keep.slice(keep.indexOf("function RelatedItem"));
-    expect(related).not.toMatch(/paperBadgeLabel|className="badge"/);
+    expect(related).not.toMatch(/paperBadgeLabel|className="badge"|data-mark/);
     expect(keep).not.toMatch(/\bCOMMENT\b/);
+    expect(keep).not.toMatch(/>Comment</);
   });
 
   it("shows Create issue work while fetch runs and fail is not a quiet miss", () => {

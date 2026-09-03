@@ -342,7 +342,11 @@ function BindCard({
         </span>
       ) : null}
       <header>
-        {kind ? <span className="badge">{kind}</span> : null}
+        {kind ? (
+          <span className="badge" data-mark={kind}>
+            {kind}
+          </span>
+        ) : null}
         <h3 className="display">
           <Link to="/read/$id" params={{ id: clip.id }}>
             {heading}

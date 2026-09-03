@@ -10,6 +10,16 @@ import type { Clip } from "./save";
 import type { SourceHeadlineRecord } from "./source-headline";
 import type { ContentType, UnderstandingRecord } from "./understanding";
 
+/** Board mark only. Stored contentType stays Comment when Grok wrote Comment. */
+export type PaperMark = "News" | "Opinion" | "Study" | "Notice";
+
+const boardMarks: Record<ContentType, PaperMark> = {
+  News: "News",
+  Comment: "Opinion",
+  Study: "Study",
+  Notice: "Notice",
+};
+
 export function hostnameOf(url: string): string {
   try {
     return new URL(url).hostname.replace(/^www\./i, "");
@@ -51,10 +61,10 @@ export function keptFigure(record: SourceHeadlineRecord | null | undefined) {
   return record.figure?.trim() ?? "";
 }
 
-/** Quiet characterization from stored understanding when status is ok. None if missing or failed. */
-export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): ContentType | null {
+/** Board label from stored understanding when status is ok. Comment → Opinion. None if missing or failed. */
+export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): PaperMark | null {
   if (!record || record.status !== "ok") return null;
-  return record.contentType;
+  return boardMarks[record.contentType];
 }
 
 /** Title, stored snippet, or publisher · date when there is no snippet. Not an off-site link. No invented dek. Tags stripped. */

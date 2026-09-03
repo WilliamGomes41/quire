@@ -328,10 +328,31 @@ nav {
   font-size: 0.72rem;
   letter-spacing: 0.02em;
   font-weight: 400;
-  color: var(--ink);
-  background: var(--paper);
-  border: 1px solid var(--ink);
   padding: 0.05rem 0.3rem;
+}
+
+.badge[data-mark="News"] {
+  background: var(--ink);
+  color: var(--paper);
+  border: 1px solid var(--ink);
+}
+
+.badge[data-mark="Opinion"] {
+  background: var(--binding);
+  color: var(--paper);
+  border: 1px solid var(--binding);
+}
+
+.badge[data-mark="Study"] {
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--ink);
+}
+
+.badge[data-mark="Notice"] {
+  background: var(--paper);
+  color: var(--binding);
+  border: 1px solid var(--binding);
 }
 
 button.related-title {

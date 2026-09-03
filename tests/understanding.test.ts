@@ -12,12 +12,14 @@ import {
 describe("understanding schema", () => {
   it("accepts News, Comment, Study, or Notice with topic, entities, and optional date", () => {
     expect(contentTypes).toEqual(["News", "Comment", "Study", "Notice"]);
+    expect(contentTypes).not.toContain("Opinion");
     expect(understandingJsonSchema.properties.contentType.enum).toEqual([
       "News",
       "Comment",
       "Study",
       "Notice",
     ]);
+    expect(understandingJsonSchema.properties.contentType.enum).not.toContain("Opinion");
     expect(understandingJsonSchema.required).toEqual([
       "contentType",
       "topic",
