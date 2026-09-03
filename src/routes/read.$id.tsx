@@ -65,6 +65,7 @@ function ReadIssue() {
     );
   }
 
+  const boundId = issue.id;
   const page = composeIssue(issue);
   const sheets = readingSheets(page);
   const last = sheets.length - 1;
@@ -107,7 +108,7 @@ function ReadIssue() {
     setPrintError("");
     composeBoundPrint({
       data: {
-        id: issue.id,
+        id: boundId,
         paper: paperNameFor(typeof navigator !== "undefined" ? navigator.language : "en-GB"),
       },
     })

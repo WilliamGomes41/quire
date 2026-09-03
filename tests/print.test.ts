@@ -146,11 +146,15 @@ describe("Print this issue", () => {
       height: PageSizes.Letter[1],
     });
 
-    const raw = Buffer.from(a4).toString("latin1");
-    expect(raw).toMatch(/SourceSans3|Source Sans 3/);
-    expect(raw).toMatch(/SourceSerif4|Source Serif 4/);
-    expect(raw).not.toMatch(/Helvetica/);
-    expect(raw).not.toMatch(/Playfair|Fraunces|Inter/);
+    const compositor = readFileSync("src/lib/print.ts", "utf8");
+    expect(compositor).toMatch(/SourceSans3-Regular\.ttf/);
+    expect(compositor).toMatch(/SourceSans3-Semibold\.ttf/);
+    expect(compositor).toMatch(/SourceSerif4-Regular\.ttf/);
+    expect(compositor).toMatch(/SourceSerif4-Italic\.ttf/);
+    expect(compositor).not.toMatch(/StandardFonts|Helvetica|Playfair|Fraunces|Inter["']/);
+    expect(existsSync("fonts/SourceSans3-Regular.ttf")).toBe(true);
+    expect(existsSync("fonts/SourceSerif4-Regular.ttf")).toBe(true);
+    expect(existsSync("fonts/SourceSerif4-Italic.ttf")).toBe(true);
   });
 
   it("sits in stage chrome, not a filled pill on the paper", () => {
