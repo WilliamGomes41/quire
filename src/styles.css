@@ -1,10 +1,10 @@
 :root {
-  --paper: #f3eee4;
+  --paper: #faf7f1;
   --ink: #1c1814;
-  --binding: #3d4a3a;
-  --muted: #6e655c;
-  --rule: #d4c9b8;
-  --deep: #e7dece;
+  --binding: #4a5c56;
+  --muted: color-mix(in srgb, var(--ink) 58%, var(--paper));
+  --rule: color-mix(in srgb, var(--ink) 16%, var(--paper));
+  --deep: color-mix(in srgb, var(--ink) 8%, var(--paper));
   --font-sans: "Source Sans 3", system-ui, sans-serif;
   --font-serif: "Source Serif 4", Georgia, serif;
 }
@@ -171,16 +171,20 @@ nav {
   gap: 0.7rem;
 }
 
-.rail .choice > span {
+.rail li {
   display: grid;
   gap: 0.15rem;
 }
 
-.rail .choice .folio,
-.rail .choice .note {
+.rail li .folio,
+.rail li .note {
   margin: 0;
   font-size: 0.82rem;
   color: color-mix(in srgb, var(--ink) 62%, var(--paper));
+}
+
+.rail > button.quiet {
+  margin-top: 0.45rem;
 }
 
 .board {
@@ -262,6 +266,11 @@ nav {
   margin: 0;
 }
 
+.card .display a {
+  color: inherit;
+  text-decoration: none;
+}
+
 .badge {
   width: fit-content;
   font-size: 0.72rem;
@@ -285,10 +294,11 @@ nav {
   margin-top: 0.35rem;
 }
 
-.source {
+a.source {
   font-size: 0.85rem;
   width: fit-content;
   color: color-mix(in srgb, var(--ink) 62%, var(--paper));
+  text-decoration: none;
 }
 
 button.quiet {
@@ -296,6 +306,36 @@ button.quiet {
   color: var(--binding);
   padding: 0;
   font-size: 0.85rem;
+}
+
+button.include {
+  box-sizing: border-box;
+  width: 0.9rem;
+  height: 0.9rem;
+  padding: 0;
+  display: inline-grid;
+  place-items: center;
+  background: transparent;
+  border: 1px solid var(--ink);
+  color: var(--paper);
+}
+
+button.include[aria-pressed="true"] {
+  background: var(--ink);
+  border-color: var(--ink);
+}
+
+button.include .tick {
+  width: 0.22rem;
+  height: 0.42rem;
+  border-right: 1.5px solid var(--paper);
+  border-bottom: 1.5px solid var(--paper);
+  transform: rotate(40deg) translateY(-0.06rem);
+  opacity: 0;
+}
+
+button.include[aria-pressed="true"] .tick {
+  opacity: 1;
 }
 
 button:disabled {
@@ -321,22 +361,6 @@ button:disabled {
   margin-top: 1.75rem;
 }
 
-.choice {
-  display: flex;
-  gap: 0.5rem;
-  align-items: flex-start;
-}
-
-.choice.include {
-  align-items: flex-start;
-}
-
-.choice.include .tile {
-  display: grid;
-  gap: 0.35rem;
-  cursor: pointer;
-}
-
 .card.in {
   border-bottom-color: var(--binding);
 }
@@ -349,7 +373,7 @@ button:disabled {
 
 html:has(.stage),
 body:has(.stage) {
-  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
+  background: color-mix(in srgb, var(--binding) 88%, var(--ink));
 }
 
 .stage {
@@ -357,7 +381,7 @@ body:has(.stage) {
   min-height: 100vh;
   margin: 0;
   padding: 0 0 3rem;
-  background: color-mix(in srgb, var(--binding) 88%, #1c1814);
+  background: color-mix(in srgb, var(--binding) 88%, var(--ink));
   color: var(--paper);
 }
 

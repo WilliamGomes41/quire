@@ -7,6 +7,7 @@ import {
   couldNotUnderstand,
   createIssueLabel,
   emptyState,
+  inLabel,
   keptNote,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
@@ -21,7 +22,16 @@ import {
   sourceLabel,
 } from "../copy";
 import { createIssue, type BoundIssue } from "../lib/bind";
-import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../lib/kept";
+import {
+  hostnameOf,
+  keptFigure,
+  keptHeading,
+  keptSnippet,
+  relatedCollapsed,
+  relatedCountLabel,
+  relatedRow,
+  relatedVisible,
+} from "../lib/kept";
 import { saveClip, type Clip } from "../lib/save";
 import { chosenFromBoard, chosenPieces, defaultBindChoice, type BindChoice } from "../lib/select";
 import {
@@ -297,7 +307,6 @@ function BindCard({
   const heading = keptHeading(clip);
   const snippet = keptSnippet(clip.sourceHeadline);
   const figure = keptFigure(clip.sourceHeadline);
-  const badge = paperBadgeLabel(clip.understanding);
   const keptOn = clip.savedAt.slice(0, 10);
   const topic = clip.understanding?.status === "ok" ? clip.understanding.topic : "";
   const headlineSpoken =
@@ -313,37 +322,40 @@ function BindCard({
 
   return (
     <article className={choice.includeOriginal ? "card in" : "card"}>
-      <label className="choice include">
-        <input
-          type="checkbox"
-          checked={choice.includeOriginal}
-          onChange={(event) => {
-            onChoice({ ...choice, includeOriginal: event.target.checked });
-          }}
-        />
-        <span className="tile">
-          {figure ? (
-            <span className="figure">
-              <img src={figure} alt="" />
-            </span>
-          ) : null}
-          <header>
-            <h3 className="display">{heading}</h3>
-            {badge ? <span className="badge">{badge}</span> : null}
-          </header>
-          {snippet ? <p className="note">{snippet}</p> : null}
-          {secondary.length > 0 ? <p className="folio">{secondary.join(" · ")}</p> : null}
-          {headlineSpoken ? (
-            <p className={headlineSpoken.kind === "fail" ? "fail" : "empty"}>
-              {headlineSpoken.text}
-              {clip.sourceHeadline?.status === "failed" ? ` ${clip.sourceHeadline.message}` : ""}
-            </p>
-          ) : null}
-          <UnderstandingFail clip={clip} />
+      {figure ? (
+        <span className="figure">
+          <img src={figure} alt="" />
         </span>
-      </label>
+      ) : null}
+      <header>
+        <h3 className="display">
+          <Link to="/read/$id" params={{ id: clip.id }}>
+            {heading}
+          </Link>
+        </h3>
+      </header>
+      {snippet ? <p className="note">{snippet}</p> : null}
+      {secondary.length > 0 ? <p className="folio">{secondary.join(" · ")}</p> : null}
+      {headlineSpoken ? (
+        <p className={headlineSpoken.kind === "fail" ? "fail" : "empty"}>
+          {headlineSpoken.text}
+          {clip.sourceHeadline?.status === "failed" ? ` ${clip.sourceHeadline.message}` : ""}
+        </p>
+      ) : null}
+      <UnderstandingFail clip={clip} />
       <p className="actions">
-        <span className="source">{host || sourceLabel}</span>
+        <button
+          type="button"
+          className="include"
+          aria-pressed={choice.includeOriginal}
+          aria-label={inLabel}
+          onClick={() => onChoice({ ...choice, includeOriginal: !choice.includeOriginal })}
+        >
+          <span className="tick" aria-hidden />
+        </button>
+        <a className="source" href={clip.url} target="_blank" rel="noreferrer">
+          {host || sourceLabel}
+        </a>
         <button
           type="button"
           className="quiet"
@@ -396,6 +408,7 @@ function RelatedSelect({
   selected: string[];
   onToggle: (url: string, on: boolean) => void;
 }) {
+  const [open, setOpen] = useState(false);
   const rail = clip.relatedRail;
   if (!rail) return null;
 
@@ -420,29 +433,59 @@ function RelatedSelect({
     );
   }
 
+  const visible = relatedVisible(pages, selected);
+  const collapsed = relatedCollapsed(pages, selected);
+  const count = relatedCountLabel(collapsed.length);
+
   return (
     <section className="rail">
-      <ul>
-        {pages.map((page) => {
-          const row = relatedRow(page);
-          return (
-            <li key={page.url}>
-              <label className="choice">
-                <input
-                  type="checkbox"
-                  checked={selected.includes(page.url)}
-                  onChange={(event) => onToggle(page.url, event.target.checked)}
-                />
-                <span>
-                  <span>{row.title}</span>
-                  {row.snippet ? <span className="note">{row.snippet}</span> : null}
-                  {row.detail ? <span className="folio">{row.detail}</span> : null}
-                </span>
-              </label>
-            </li>
-          );
-        })}
-      </ul>
+      {visible.length > 0 ? (
+        <ul>
+          {visible.map((page) => (
+            <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+          ))}
+        </ul>
+      ) : null}
+      {count ? (
+        <button type="button" className="quiet" aria-expanded={open} onClick={() => setOpen((current) => !current)}>
+          {count}
+        </button>
+      ) : null}
+      {open && collapsed.length > 0 ? (
+        <ul>
+          {collapsed.map((page) => (
+            <RelatedItem key={page.url} page={page} on={selected.includes(page.url)} onToggle={onToggle} />
+          ))}
+        </ul>
+      ) : null}
     </section>
+  );
+}
+
+function RelatedItem({
+  page,
+  on,
+  onToggle,
+}: {
+  page: { url: string; title?: string; snippet?: string; date?: string };
+  on: boolean;
+  onToggle: (url: string, on: boolean) => void;
+}) {
+  const row = relatedRow(page);
+  return (
+    <li>
+      <span>{row.title}</span>
+      {row.snippet ? <span className="note">{row.snippet}</span> : null}
+      {row.detail ? <span className="folio">{row.detail}</span> : null}
+      <button
+        type="button"
+        className="include"
+        aria-pressed={on}
+        aria-label={inLabel}
+        onClick={() => onToggle(page.url, !on)}
+      >
+        <span className="tick" aria-hidden />
+      </button>
+    </li>
   );
 }

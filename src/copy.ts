@@ -40,6 +40,8 @@ export const createIssueLabel = "Create issue";
 
 export const sourceLabel = "Source";
 
+export const inLabel = "In";
+
 export const removeLabel = "Remove";
 
 export const removeIssueAsk = "Return the pieces to Desk, or remove them too?";

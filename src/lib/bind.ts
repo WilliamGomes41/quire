@@ -47,6 +47,29 @@ export function leadPiece(pieces: BoundPiece[]) {
   return pieces.find((piece) => piece.role === "original") ?? pieces[0] ?? null;
 }
 
+/**
+ * Read this keep on the magazine sheet. Not a bind. Not /clips.
+ * Related still join only when selected at Create issue.
+ */
+export function issueFromKeptWords(clip: Clip, words: ArticleWords): BoundIssue {
+  return {
+    id: clip.id,
+    createdAt: clip.savedAt,
+    title: words.headline,
+    leadUrl: clip.url,
+    take: null,
+    pieces: [
+      {
+        url: clip.url,
+        role: "original",
+        headline: words.headline,
+        paragraphs: words.paragraphs,
+        ...(words.figure ? { figure: words.figure } : {}),
+      },
+    ],
+  };
+}
+
 async function wordsFor(
   chosen: ChosenPiece,
   fetchWords: (url: string) => Promise<ArticleWords>,

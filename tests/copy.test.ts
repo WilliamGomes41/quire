@@ -19,6 +19,7 @@ import {
   returnToDeskLabel,
   sourceHeadlineCopy,
   sourceLabel,
+  inLabel,
   takeLabel,
   contentsKicker,
   printThisIssue,
@@ -35,6 +36,8 @@ describe("product voice", () => {
     expect(couldNotUnderstand).toMatch(/Could not understand/);
     expect(createIssueLabel).toBe("Create issue");
     expect(sourceLabel).toBe("Source");
+    expect(inLabel).toBe("In");
+    expect(inLabel.length).toBeLessThan(8);
     expect(removeLabel).toBe("Remove");
     expect(removeIssueAsk).toMatch(/Return the pieces to Desk/);
     expect(returnToDeskLabel).toBe("Return the pieces to Desk.");
@@ -68,6 +71,7 @@ describe("product voice", () => {
       couldNotFetchWords,
       printThisIssue,
       couldNotPrint,
+      inLabel,
     ].join(" ");
     expect(surface).not.toMatch(/\bPress\b/);
     expect(surface).not.toMatch(/TL;DR|tl;dr/);

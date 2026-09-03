@@ -148,6 +148,12 @@ describe("Print this issue", () => {
     });
 
     const compositor = readFileSync("src/lib/print-compose.ts", "utf8");
+    expect(compositor).toMatch(/250 \/ 255,\s*247 \/ 255,\s*241 \/ 255/);
+    expect(compositor).toMatch(/28 \/ 255,\s*24 \/ 255,\s*20 \/ 255/);
+    expect(compositor).toMatch(/74 \/ 255,\s*92 \/ 255,\s*86 \/ 255/);
+    expect(compositor).not.toMatch(/243 \/ 255,\s*238 \/ 255,\s*228 \/ 255/);
+    expect(compositor).not.toMatch(/61 \/ 255,\s*74 \/ 255,\s*58 \/ 255/);
+    expect(compositor).not.toMatch(/79 \/ 255,\s*111 \/ 255,\s*92 \/ 255/);
     expect(compositor).toMatch(/SourceSans3-Regular\.ttf/);
     expect(compositor).toMatch(/SourceSans3-Semibold\.ttf/);
     expect(compositor).toMatch(/SourceSerif4-Regular\.ttf/);
@@ -196,9 +202,9 @@ describe("Print this issue", () => {
     expect(keep).toMatch(/className="keep"/);
     expect(keep).toMatch(/createIssueLabel/);
     expect(keep).not.toMatch(/printThisIssue|className="stage"/);
-    expect(css).toMatch(/--paper: #f3eee4;/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
-    expect(css).toMatch(/--binding: #3d4a3a;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
     expect(families).toEqual(["Source+Sans+3", "Source+Serif+4"]);
     expect(pkg).toMatch(/"pdf-lib"/);
     expect(pkg).not.toMatch(/pdfjs|react-pdf|page-flip|stpageflip|react-pageflip|issuu/i);

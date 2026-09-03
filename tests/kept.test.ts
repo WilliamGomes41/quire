@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedRow } from "../src/lib/kept";
+import { hostnameOf, keptFigure, keptHeading, keptSnippet, paperBadgeLabel, relatedCollapsed, relatedCountLabel, relatedRow, relatedVisible } from "../src/lib/kept";
 import type { Clip } from "../src/lib/save";
 
 function clip(over: Partial<Clip> = {}): Clip {
@@ -48,7 +48,7 @@ describe("kept card heading", () => {
     ).toBe("");
   });
 
-  it("falls back to host and stored topic when there is no author headline", () => {
+  it("falls back to stored topic without a host prefix when there is no author headline", () => {
     expect(hostnameOf("https://www.news.example/harbour")).toBe("news.example");
     expect(keptHeading(clip())).toBe("news.example");
     expect(keptHeading(clip())).not.toBe("https://www.news.example/harbour");
@@ -62,7 +62,8 @@ describe("kept card heading", () => {
         date: "2026-09-01",
       },
     });
-    expect(keptHeading(understood)).toBe("news.example · A harbour vote");
+    expect(keptHeading(understood)).toBe("A harbour vote");
+    expect(keptHeading(understood)).not.toMatch(/news\.example/);
     expect(keptHeading(understood)).not.toBe(understood.url);
   });
 
@@ -138,6 +139,21 @@ describe("related row is readable without leaving Select", () => {
     });
   });
 
+  it("strips tags from related title and snippet", () => {
+    expect(
+      relatedRow({
+        url: "https://news.example/one",
+        title: "<b>Harbour vote</b>",
+        snippet: "Watch <em>live</em> and catch up.",
+      }),
+    ).toEqual({
+      title: "Harbour vote",
+      host: "news.example",
+      snippet: "Watch live and catch up.",
+      detail: "",
+    });
+  });
+
   it("falls back to publisher · date when there is no snippet, and does not invent a dek", () => {
     expect(relatedRow({ url: "https://news.example/one" })).toEqual({
       title: "https://news.example/one",
@@ -157,5 +173,21 @@ describe("related row is readable without leaving Select", () => {
       snippet: "",
       detail: "news.example · 2026-09-01",
     });
+  });
+});
+
+describe("related roll in and out", () => {
+  it("keeps selected related visible and unselected in the collapsed set", () => {
+    const pages = [
+      { url: "https://news.example/one", title: "One" },
+      { url: "https://news.example/two", title: "Two" },
+      { url: "https://news.example/three", title: "Three" },
+    ];
+    expect(relatedVisible(pages, ["https://news.example/two"])).toEqual([pages[1]]);
+    expect(relatedCollapsed(pages, ["https://news.example/two"])).toEqual([pages[0], pages[2]]);
+    expect(relatedCollapsed(pages, [])).toEqual(pages);
+    expect(relatedVisible(pages, [])).toEqual([]);
+    expect(relatedCountLabel(3)).toBe("3");
+    expect(relatedCountLabel(0)).toBe("");
   });
 });
