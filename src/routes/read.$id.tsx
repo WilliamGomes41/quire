@@ -12,7 +12,8 @@ import {
   type SequenceSheet,
   type SheetFigure,
 } from "../lib/compose";
-import { composePrint, offerPrint, paperNameFor } from "../lib/print";
+import { composeBoundPrint } from "../lib/print-bound";
+import { offerPrint, paperNameFor } from "../lib/print";
 import { issueStore } from "../lib/store";
 
 const TURN_MS = 280;
@@ -22,17 +23,6 @@ const loadIssue = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const issues = await issueStore();
     return issues.get(data.id);
-  });
-
-const composeBoundPrint = createServerFn({ method: "POST" })
-  .validator((data: { id: string; paper?: "a4" | "letter" }) => data)
-  .handler(async ({ data }) => {
-    const issues = await issueStore();
-    const issue = await issues.get(data.id);
-    if (!issue) throw new Error(couldNotPrint);
-    const paper = data.paper === "letter" || data.paper === "a4" ? data.paper : paperNameFor();
-    const bytes = await composePrint(issue, paper);
-    return { bytes: Buffer.from(bytes).toString("base64"), paper };
   });
 
 export const Route = createFileRoute("/read/$id")({

@@ -4,7 +4,8 @@ import { PDFDocument, PageSizes } from "pdf-lib";
 import { describe, expect, it } from "vitest";
 import type { BoundIssue } from "../src/lib/bind";
 import { composeIssue } from "../src/lib/compose";
-import { composePrint, paperBox, paperNameFor, printPlan } from "../src/lib/print";
+import { composePrint } from "../src/lib/print-compose";
+import { paperBox, paperNameFor, printPlan } from "../src/lib/print";
 import { couldNotPrint, printThisIssue } from "../src/copy";
 
 function walk(dir: string): string[] {
@@ -109,12 +110,12 @@ describe("Print this issue", () => {
     if (lead?.kind === "piece") {
       expect(lead.take).toBe("A quiet count in Praia.");
     }
-    const print = readFileSync("src/lib/print.ts", "utf8");
+    const compositor = readFileSync("src/lib/print-compose.ts", "utf8");
     const read = readFileSync("src/routes/read.$id.tsx", "utf8");
-    expect(print).toMatch(/serifIt/);
-    expect(print).not.toMatch(/["']Take["']/);
-    expect(print).not.toMatch(/takeLabel/);
-    expect(print).not.toMatch(/TL;DR|tl;dr/);
+    expect(compositor).toMatch(/serifIt/);
+    expect(compositor).not.toMatch(/["']Take["']/);
+    expect(compositor).not.toMatch(/takeLabel/);
+    expect(compositor).not.toMatch(/TL;DR|tl;dr/);
     expect(read).not.toMatch(/takeLabel/);
     expect(read).not.toMatch(/>Take</);
 
@@ -146,7 +147,7 @@ describe("Print this issue", () => {
       height: PageSizes.Letter[1],
     });
 
-    const compositor = readFileSync("src/lib/print.ts", "utf8");
+    const compositor = readFileSync("src/lib/print-compose.ts", "utf8");
     expect(compositor).toMatch(/SourceSans3-Regular\.ttf/);
     expect(compositor).toMatch(/SourceSans3-Semibold\.ttf/);
     expect(compositor).toMatch(/SourceSerif4-Regular\.ttf/);
@@ -155,6 +156,15 @@ describe("Print this issue", () => {
     expect(existsSync("fonts/SourceSans3-Regular.ttf")).toBe(true);
     expect(existsSync("fonts/SourceSerif4-Regular.ttf")).toBe(true);
     expect(existsSync("fonts/SourceSerif4-Italic.ttf")).toBe(true);
+  });
+
+  it("keeps the compositor off the client Read module", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const helpers = readFileSync("src/lib/print.ts", "utf8");
+    expect(read).not.toMatch(/print-compose|node:fs|pdf-lib|fontkit/);
+    expect(helpers).not.toMatch(/node:fs|pdf-lib|fontkit|readFileSync/);
+    expect(read).toMatch(/composeBoundPrint/);
+    expect(read).toMatch(/from "\.\.\/lib\/print-bound"/);
   });
 
   it("sits in stage chrome, not a filled pill on the paper", () => {
