@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { productName } from "../copy";
+import { couldNotPrint, printThisIssue, productName } from "../copy";
 import {
   clampSheetIndex,
   composeIssue,
@@ -12,6 +12,8 @@ import {
   type SequenceSheet,
   type SheetFigure,
 } from "../lib/compose";
+import { composeBoundPrint } from "../lib/print-bound";
+import { offerPrint, paperNameFor } from "../lib/print";
 import { issueStore } from "../lib/store";
 
 const TURN_MS = 280;
@@ -32,6 +34,8 @@ function ReadIssue() {
   const issue = Route.useLoaderData();
   const [index, setIndex] = useState(0);
   const [turning, setTurning] = useState(false);
+  const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState("");
   const timer = useRef<number | null>(null);
 
   useEffect(() => {
@@ -51,6 +55,7 @@ function ReadIssue() {
     );
   }
 
+  const boundId = issue.id;
   const page = composeIssue(issue);
   const sheets = readingSheets(page);
   const last = sheets.length - 1;
@@ -87,30 +92,55 @@ function ReadIssue() {
     }, TURN_MS);
   }
 
+  function printBound() {
+    if (printing) return;
+    setPrinting(true);
+    setPrintError("");
+    composeBoundPrint({
+      data: {
+        id: boundId,
+        paper: paperNameFor(typeof navigator !== "undefined" ? navigator.language : "en-GB"),
+      },
+    })
+      .then((result) => {
+        offerPrint(result.bytes);
+      })
+      .catch((cause: unknown) => {
+        setPrintError(cause instanceof Error && cause.message ? cause.message : couldNotPrint);
+      })
+      .finally(() => setPrinting(false));
+  }
+
   return (
     <main className="stage">
       <nav className="stage-chrome">
         <Link to="/">{productName}</Link>
-        <div className="stage-turn">
-          <button
-            type="button"
-            disabled={index <= 0 || turning}
-            onClick={() => goTo(previousSheetIndex(index, sheets.length))}
-          >
-            Previous
-          </button>
-          <span>
-            {String(index + 1).padStart(2, "0")} / {String(sheets.length).padStart(2, "0")}
-          </span>
-          <button
-            type="button"
-            disabled={index >= last || turning}
-            onClick={() => goTo(nextSheetIndex(index, sheets.length))}
-          >
-            Next
+        <div className="stage-tools">
+          <div className="stage-turn">
+            <button
+              type="button"
+              disabled={index <= 0 || turning}
+              onClick={() => goTo(previousSheetIndex(index, sheets.length))}
+            >
+              Previous
+            </button>
+            <span>
+              {String(index + 1).padStart(2, "0")} / {String(sheets.length).padStart(2, "0")}
+            </span>
+            <button
+              type="button"
+              disabled={index >= last || turning}
+              onClick={() => goTo(nextSheetIndex(index, sheets.length))}
+            >
+              Next
+            </button>
+          </div>
+          <button type="button" className="stage-print" disabled={printing} onClick={printBound}>
+            {printThisIssue}
           </button>
         </div>
       </nav>
+      {printError ? <p className="stage-empty">{printError}</p> : null}
       <div className="stage-well">
         <article
           className={sheetClass}

@@ -46,7 +46,9 @@ describe("bound magazine sheet", () => {
     expect(read).toMatch(/sheet\.take \?/);
     expect(read).not.toMatch(/Inside ·/);
     expect(read).not.toMatch(/Inside/);
-    expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
+    expect(read).toMatch(/printThisIssue/);
+    expect(read).toMatch(/className="stage-print"/);
+    expect(read).not.toMatch(/window\.print|printIssue/);
   });
 
   it("does not print a Take kicker or a raw source URL as the folio", () => {
@@ -265,6 +267,7 @@ describe("bound magazine sheet", () => {
     expect(lock).not.toMatch(/page-flip|stpageflip|react-pageflip|turn\.js/i);
     expect(read).not.toMatch(/\bPress\b/);
     expect(read).not.toMatch(/\/clips\/\$/);
-    expect(read).not.toMatch(/Print this issue|window\.print|printIssue/);
+    expect(read).toMatch(/printThisIssue/);
+    expect(read).not.toMatch(/window\.print|printIssue/);
   });
 });

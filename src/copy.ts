@@ -66,6 +66,10 @@ export const couldNotReadHeadline = "Could not read a headline from the source."
 
 export const noHeadlineOnSource = "No headline on the source.";
 
+export const printThisIssue = "Print this issue";
+
+export const couldNotPrint = "Could not print this issue.";
+
 export function sourceHeadlineCopy(input: { status: "ok" | "empty" | "failed" }) {
   if (input.status === "ok") {
     return { kind: "ok" as const, text: "" };

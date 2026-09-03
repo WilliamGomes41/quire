@@ -365,6 +365,7 @@ body:has(.stage) {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
+  flex-wrap: wrap;
   gap: 1rem;
   margin: 0;
   padding: 1.15rem 1.5rem 1.25rem;
@@ -373,6 +374,13 @@ body:has(.stage) {
 .stage-chrome a {
   color: color-mix(in srgb, var(--paper) 88%, var(--binding));
   text-decoration: none;
+}
+
+.stage-tools {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 1.15rem;
 }
 
 .stage-turn {
@@ -384,11 +392,18 @@ body:has(.stage) {
   color: color-mix(in srgb, var(--paper) 72%, var(--binding));
 }
 
-.stage-turn button {
+.stage-turn button,
+.stage-print {
   background: transparent;
   color: inherit;
   border: 1px solid color-mix(in srgb, var(--paper) 28%, transparent);
   padding: 0.35rem 0.7rem;
+}
+
+.stage-print {
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+  color: color-mix(in srgb, var(--paper) 72%, var(--binding));
 }
 
 .stage-empty {

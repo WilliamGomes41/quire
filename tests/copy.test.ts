@@ -21,6 +21,8 @@ import {
   sourceLabel,
   takeLabel,
   contentsKicker,
+  printThisIssue,
+  couldNotPrint,
 } from "../src/copy";
 
 describe("product voice", () => {
@@ -43,6 +45,9 @@ describe("product voice", () => {
     expect(takeLabel).toBe("Take");
     expect(takeLabel).not.toMatch(/TL;DR|tl;dr/);
     expect(boundEmpty).toMatch(/Create the issue/);
+    expect(printThisIssue).toBe("Print this issue");
+    expect(printThisIssue).not.toMatch(/Press|PDF/);
+    expect(couldNotPrint).toBe("Could not print this issue.");
   });
 
   it("does not invent a Press product surface or a TL;DR kicker", () => {
@@ -61,9 +66,12 @@ describe("product voice", () => {
       takeLabel,
       boundEmpty,
       couldNotFetchWords,
+      printThisIssue,
+      couldNotPrint,
     ].join(" ");
     expect(surface).not.toMatch(/\bPress\b/);
     expect(surface).not.toMatch(/TL;DR|tl;dr/);
+    expect(printThisIssue).toBe("Print this issue");
   });
 
   it("keeps empty-topic copy off the system-fail sentence", () => {
