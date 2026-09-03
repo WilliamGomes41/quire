@@ -16,6 +16,23 @@ export function compactText(value: unknown, max = 20_000) {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
 }
 
+/** Tags off. Entities decoded. Never invented. */
+export function plainText(value: unknown, max = 20_000) {
+  if (typeof value !== "string") return "";
+  return compactText(
+    value
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/\s+([.,;:!?])/g, "$1"),
+    max,
+  );
+}
+
 export function canonicalizeUrl(value: string) {
   try {
     const url = new URL(value);

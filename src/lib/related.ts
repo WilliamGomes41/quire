@@ -1,4 +1,5 @@
 import { couldNotLook } from "../copy";
+import { plainText } from "./article";
 import { searchFailStatus, type SearchPages } from "./search";
 import type { Understanding } from "./understanding";
 
@@ -30,7 +31,7 @@ export type RelatedPersist = {
 };
 
 function compact(value: unknown, max: number) {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, max) : "";
+  return plainText(value, max);
 }
 
 function canonicalizeUrl(value: string) {

@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { couldNotPrint, printThisIssue, productName } from "../copy";
+import { couldNotFetchWords, couldNotPrint, printThisIssue, productName } from "../copy";
+import { issueFromKeptWords } from "../lib/bind";
+import { fetchArticleWords } from "../lib/article";
 import {
   clampSheetIndex,
   composeIssue,
@@ -14,7 +16,7 @@ import {
 } from "../lib/compose";
 import { composeBoundPrint } from "../lib/print-bound";
 import { offerPrint, paperNameFor } from "../lib/print";
-import { issueStore } from "../lib/store";
+import { clipStore, issueStore } from "../lib/store";
 
 const TURN_MS = 280;
 
@@ -22,7 +24,20 @@ const loadIssue = createServerFn({ method: "GET" })
   .validator((data: { id: string }) => data)
   .handler(async ({ data }) => {
     const issues = await issueStore();
-    return issues.get(data.id);
+    const bound = await issues.get(data.id);
+    if (bound) return { bound: true as const, issue: bound };
+    const clip = await (await clipStore()).get(data.id);
+    if (!clip) return { bound: false as const, issue: null };
+    try {
+      const words = await fetchArticleWords(clip.url);
+      return { bound: false as const, issue: issueFromKeptWords(clip, words) };
+    } catch (error) {
+      return {
+        bound: false as const,
+        issue: null,
+        fail: error instanceof Error && error.message ? error.message : couldNotFetchWords,
+      };
+    }
   });
 
 export const Route = createFileRoute("/read/$id")({
@@ -31,7 +46,9 @@ export const Route = createFileRoute("/read/$id")({
 });
 
 function ReadIssue() {
-  const issue = Route.useLoaderData();
+  const payload = Route.useLoaderData();
+  const issue = payload?.issue ?? null;
+  const bound = payload?.bound === true;
   const [index, setIndex] = useState(0);
   const [turning, setTurning] = useState(false);
   const [printing, setPrinting] = useState(false);
@@ -50,7 +67,7 @@ function ReadIssue() {
         <nav className="stage-chrome">
           <Link to="/">{productName}</Link>
         </nav>
-        <p className="stage-empty">That issue is not here.</p>
+        <p className="stage-empty">{payload?.fail ?? "That issue is not here."}</p>
       </main>
     );
   }
@@ -135,9 +152,11 @@ function ReadIssue() {
               Next
             </button>
           </div>
-          <button type="button" className="stage-print" disabled={printing} onClick={printBound}>
-            {printThisIssue}
-          </button>
+          {bound ? (
+            <button type="button" className="stage-print" disabled={printing} onClick={printBound}>
+              {printThisIssue}
+            </button>
+          ) : null}
         </div>
       </nav>
       {printError ? <p className="stage-empty">{printError}</p> : null}

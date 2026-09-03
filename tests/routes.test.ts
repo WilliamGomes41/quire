@@ -28,6 +28,8 @@ describe("PR 4 surface", () => {
     expect(keep).toMatch(/\/read\/\$id/);
     expect(keep).not.toMatch(/web_search/);
     expect(read).toMatch(/composeIssue/);
+    expect(read).toMatch(/issueFromKeptWords/);
+    expect(read).toMatch(/clipStore/);
     expect(read).toMatch(/data-sheet=\{kind\}/);
     expect(read).toMatch(/sheet-cover/);
     expect(read).toMatch(/sheet-contents/);
@@ -72,33 +74,37 @@ describe("kept card does not leak to the source", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).not.toMatch(/<a href=\{clip\.url\}>\{clip\.url\}<\/a>/);
     expect(keep).toMatch(/keptHeading\(clip\)/);
-    expect(keep).toMatch(/<h3 className="display">\{heading\}<\/h3>/);
+    expect(keep).toMatch(/<Link to="\/read\/\$id" params=\{\{ id: clip\.id \}\}>/);
     expect(keep).not.toMatch(/to=["']\/clips\/\$clipId["']/);
     expect(keep).not.toMatch(/\/clips\/\$/);
   });
 
-  it("keeps Source as a quiet secondary word, not the hit target", () => {
+  it("makes Source the one leaving control, not a host prefix on the headline", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     expect(keep).toMatch(/className="source"/);
     expect(keep).toMatch(/sourceLabel/);
-    expect(keep).toMatch(/<span className="source">\{host \|\| sourceLabel\}<\/span>/);
-    expect(keep).not.toMatch(/href=\{clip\.url\}/);
-    expect(keep).not.toMatch(/target="_blank"/);
+    expect(keep).toMatch(/href=\{clip\.url\}/);
+    expect(keep).toMatch(/target="_blank"/);
+    expect(keep).not.toMatch(/<span className="source">/);
+    expect(keep).not.toMatch(/host && topic/);
   });
 
-  it("shows a paper badge only from an ok understanding", () => {
+  it("does not put COMMENT or type badges on the board", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).toMatch(/paperBadgeLabel\(clip\.understanding\)/);
-    expect(keep).toMatch(/\{badge \? <span className="badge">\{badge\}<\/span> : null\}/);
+    expect(keep).not.toMatch(/paperBadgeLabel/);
+    expect(keep).not.toMatch(/className="badge"/);
+    expect(keep).not.toMatch(/\bCOMMENT\b/);
   });
 
-  it("keeps related titles as checkboxes, not off-site links", () => {
+  it("keeps related titles as quiet include, not off-site links or Read", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).toMatch(/type="checkbox"/);
+    expect(keep).not.toMatch(/type="checkbox"/);
     expect(keep).toMatch(/relatedRow\(page\)/);
     expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
+    expect(keep).toMatch(/inLabel/);
     expect(keep).not.toMatch(/<a href=\{page\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
+    expect(keep).not.toMatch(/to="\/read\/\$id" params=\{\{ id: page/);
   });
 
   it("shows the stored related snippet, or publisher · date when there is no snippet", () => {
@@ -148,16 +154,21 @@ describe("kept card does not leak to the source", () => {
     expect(keep).toMatch(/\/read\/\$id/);
   });
 
-  it("lets the tile and related row toggle include, and never leaves on primary click", () => {
+  it("lets the headline open Read on this keep, and In is not the title", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).toMatch(/className="choice include"/);
+    expect(keep).toMatch(/to="\/read\/\$id"/);
+    expect(keep).toMatch(/params=\{\{ id: clip\.id \}\}/);
+    expect(keep).toMatch(/inLabel/);
     expect(keep).toMatch(/includeOriginal/);
     expect(keep).toMatch(/onToggle/);
-    expect(keep).not.toMatch(/href=\{clip\.url\}/);
+    expect(keep).not.toMatch(/className="choice include"/);
+    expect(keep).not.toMatch(/type="checkbox"/);
+    expect(keep).toMatch(/href=\{clip\.url\}/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
     expect(keep).toMatch(/keptFigure\(clip\.sourceHeadline\)/);
     expect(keep).toMatch(/figure \?/);
     expect(keep).not.toMatch(/fetchOg|ogImage/);
+    expect(keep).not.toMatch(/<details|<summary/);
   });
 
   it("hides the Select sermons on the tiles", () => {

@@ -1,9 +1,10 @@
 /**
  * Kept-piece card display. Author headline when stored.
- * Host and topic stay secondary. Related rows stay checkboxes.
+ * Host is the leaving source, not a headline prefix. Related roll in and out.
  * PROTOCOL §2 / §5 / §10.
  */
 
+import { plainText } from "./article";
 import type { RelatedPage } from "./related";
 import type { Clip } from "./save";
 import type { SourceHeadlineRecord } from "./source-headline";
@@ -29,16 +30,14 @@ function storedTopic(record: UnderstandingRecord | null | undefined) {
 
 /**
  * Tile heading is the stored source headline when present.
- * Fallback: host + stored topic. Never the raw clip URL. Never invented.
+ * Fallback: stored topic. Never a host prefix. Never the raw clip URL. Never invented.
  */
 export function keptHeading(clip: Pick<Clip, "url" | "understanding" | "sourceHeadline">): string {
   const headline = storedHeadline(clip.sourceHeadline);
   if (headline) return headline;
-  const host = hostnameOf(clip.url);
   const topic = storedTopic(clip.understanding);
-  if (host && topic) return `${host} · ${topic}`;
   if (topic) return topic;
-  return host;
+  return hostnameOf(clip.url);
 }
 
 export function keptSnippet(record: SourceHeadlineRecord | null | undefined) {
@@ -58,15 +57,30 @@ export function paperBadgeLabel(record: UnderstandingRecord | null | undefined):
   return record.contentType;
 }
 
-/** Title, stored snippet, or publisher · date when there is no snippet. Not an off-site link. No invented dek. */
+/** Title, stored snippet, or publisher · date when there is no snippet. Not an off-site link. No invented dek. Tags stripped. */
 export function relatedRow(page: RelatedPage) {
   const host = hostnameOf(page.url);
-  const snippet = page.snippet ?? "";
+  const snippet = plainText(page.snippet ?? "", 1000);
   const date = typeof page.date === "string" ? page.date.trim() : "";
   return {
-    title: page.title || page.url,
+    title: plainText(page.title || page.url, 500),
     host,
     snippet,
     detail: snippet ? "" : [host, date].filter(Boolean).join(" · "),
   };
+}
+
+/** Selected related stay visible. They are in the bind. */
+export function relatedVisible(pages: RelatedPage[], selected: string[]) {
+  return pages.filter((page) => selected.includes(page.url));
+}
+
+/** Unselected related stay in the collapsed set. */
+export function relatedCollapsed(pages: RelatedPage[], selected: string[]) {
+  return pages.filter((page) => !selected.includes(page.url));
+}
+
+/** Short count, not a sermon. Empty when nothing is collapsed. */
+export function relatedCountLabel(count: number) {
+  return count > 0 ? String(count) : "";
 }

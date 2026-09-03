@@ -134,6 +134,12 @@ describe("provider slot", () => {
         "https://example.com/kept",
       ),
     ).toEqual([{ url: "https://news.example/follow", title: "Follow-up", date: "2026-09-01" }]);
+    expect(
+      normalizeRelated(
+        [{ url: "https://news.example/tagged", title: "<b>Harbour</b>", snippet: "A <em>note</em>." }],
+        "https://example.com/kept",
+      ),
+    ).toEqual([{ url: "https://news.example/tagged", title: "Harbour", snippet: "A note." }]);
 
     const deduped = dedupeRelated([
       { url: "https://news.example/a", title: "One" },

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { composeIssue } from "../src/lib/compose";
-import { createIssue, type BoundIssue, type IssueStore } from "../src/lib/bind";
+import { createIssue, issueFromKeptWords, type BoundIssue, type IssueStore } from "../src/lib/bind";
 import { resetMemoryDb } from "../src/lib/db";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
 import { relatedPersist } from "../src/lib/related";
@@ -292,5 +292,33 @@ describe("create issue binds a visible magazine page", () => {
       ),
     ).rejects.toThrow(/Select something to bind/);
     expect(clips.rows.has(clip.id)).toBe(true);
+  });
+
+  it("reads an unbound keep as a magazine sheet without inserting an issue", () => {
+    const keep: Clip = {
+      id: "clip-keep",
+      url: "https://example.com/kept",
+      savedAt: "2026-09-01T00:00:00.000Z",
+      understanding: null,
+      relatedRail: { status: "ok" },
+      relatedReporting: [{ url: "https://news.example/one", title: "Harbour vote in Praia" }],
+      sourceHeadline: { status: "ok", text: "The harbour vote" },
+    };
+    const issues = memoryIssues();
+    const sheet = issueFromKeptWords(keep, originalWords);
+    expect(sheet.id).toBe("clip-keep");
+    expect(sheet.take).toBeNull();
+    expect(sheet.pieces).toEqual([
+      {
+        url: "https://example.com/kept",
+        role: "original",
+        headline: "The harbour vote",
+        paragraphs: originalWords.paragraphs,
+      },
+    ]);
+    const page = composeIssue(sheet);
+    expect(page.lead.paragraphs).toEqual(originalWords.paragraphs);
+    expect(page.sequence).toHaveLength(1);
+    expect(issues.rows.size).toBe(0);
   });
 });

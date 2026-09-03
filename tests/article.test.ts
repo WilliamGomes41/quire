@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { extractArticleWords, fetchArticleWords, isPublicHttpUrl } from "../src/lib/article";
+import { extractArticleWords, fetchArticleWords, isPublicHttpUrl, plainText } from "../src/lib/article";
 
 describe("original words stay the author's", () => {
   it("extracts headline and paragraphs from the article, not a fragment paste-up", () => {
@@ -57,5 +57,13 @@ describe("original words stay the author's", () => {
         ),
     });
     expect(words.paragraphs).toEqual(["Author sentence one.", "Author sentence two."]);
+  });
+});
+
+describe("plain text strips tags", () => {
+  it("drops markup from snippets without inventing words", () => {
+    expect(plainText("Watch <b>live</b> and catch up.")).toBe("Watch live and catch up.");
+    expect(plainText("<p>A <em>note</em>.</p>")).toBe("A note.");
+    expect(plainText("")).toBe("");
   });
 });

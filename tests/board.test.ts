@@ -13,7 +13,8 @@ describe("Keep / Select press board", () => {
     const size = remSize(tile);
 
     expect(keep).toMatch(/keptHeading\(clip\)/);
-    expect(keep).toMatch(/<h3 className="display">\{heading\}<\/h3>/);
+    expect(keep).toMatch(/<Link to="\/read\/\$id" params=\{\{ id: clip\.id \}\}>/);
+    expect(keep).toMatch(/\{heading\}/);
     expect(tile).toMatch(/font-family:\s*var\(--font-serif\)/);
     expect(size).toBeGreaterThanOrEqual(1.5);
     expect(size).toBeLessThanOrEqual(2.2);
@@ -22,15 +23,20 @@ describe("Keep / Select press board", () => {
     expect(css).not.toMatch(/\.card \.display \{[^}]*(?:^|[^\d.])(?:[4-7](?:\.\d+)?)rem/);
   });
 
-  it("keeps related as checkbox + title + snippet, not off-site links", () => {
+  it("keeps related collapsed by default with a quiet count, not an OS accordion", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
-    expect(keep).toMatch(/type="checkbox"/);
-    expect(keep).toMatch(/relatedRow\(page\)/);
-    expect(keep).toMatch(/<span>\{row\.title\}<\/span>/);
+    expect(keep).toMatch(/relatedCollapsed\(pages, selected\)/);
+    expect(keep).toMatch(/relatedVisible\(pages, selected\)/);
+    expect(keep).toMatch(/relatedCountLabel\(collapsed\.length\)/);
+    expect(keep).toMatch(/const \[open, setOpen\] = useState\(false\)/);
+    expect(keep).toMatch(/aria-expanded=\{open\}/);
+    expect(keep).toMatch(/\{row\.title\}/);
     expect(keep).toMatch(/\{row\.snippet \? <span className="note">\{row\.snippet\}<\/span> : null\}/);
+    expect(keep).toMatch(/inLabel/);
+    expect(keep).not.toMatch(/type="checkbox"/);
+    expect(keep).not.toMatch(/<details|<summary/);
     expect(keep).not.toMatch(/href=\{page\.url\}/);
-    expect(keep).not.toMatch(/href=\{clip\.url\}/);
-    expect(keep).not.toMatch(/target="_blank"/);
+    expect(keep).not.toMatch(/lucide-react|Chevron/);
   });
 
   it("makes Keep one paste, not a form stack", () => {
@@ -106,6 +112,7 @@ describe("Keep / Select press board", () => {
     expect(keep).not.toMatch(/\/clips\/\$/);
     expect(keep).not.toMatch(/\bPress\b/);
     expect(keep).not.toMatch(/lucide-react|sonner|Trash2/);
+    expect(keep).not.toMatch(/paperBadgeLabel|className="badge"|COMMENT/);
   });
 
   it("keeps one Create issue, quiet Remove, and fail-closed headline persist", () => {
@@ -116,7 +123,8 @@ describe("Keep / Select press board", () => {
     expect(keep).toMatch(/nothingSelected/);
     expect(keep).toMatch(/className="quiet"/);
     expect(keep).toMatch(/removeLabel/);
-    expect(keep).toMatch(/<span className="source">\{host \|\| sourceLabel\}<\/span>/);
+    expect(keep).toMatch(/href=\{clip\.url\}/);
+    expect(keep).toMatch(/className="source"/);
     expect(save).toMatch(/persistSourceHeadline/);
     expect(save).toMatch(/store\.insert\(/);
   });
