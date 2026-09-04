@@ -6,6 +6,7 @@
 import { jsonText } from "./article";
 import { grokModel, xaiChatUrl } from "./model";
 import type { ArticleWords } from "./article";
+import { serverEnv } from "./server-env";
 
 export type TakeOk = { status: "ok"; text: string };
 export type TakeFail = { status: "failed"; message: string; at: string };
@@ -102,7 +103,7 @@ export async function runGrokTake(
   input: ArticleWords,
   deps?: { apiKey?: string; post?: GrokPost },
 ): Promise<string> {
-  const apiKey = deps?.apiKey ?? process.env.XAI_API_KEY;
+  const apiKey = deps?.apiKey ?? serverEnv("XAI_API_KEY");
   if (!apiKey) {
     throw new Error("XAI_API_KEY is not set");
   }

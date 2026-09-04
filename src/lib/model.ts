@@ -1,5 +1,7 @@
 /** Pinned xAI model. Keep understanding, related search strings, and optional take after Select. */
 
-export const grokModel = process.env.XAI_MODEL ?? "grok-4.6";
+import { serverEnv } from "./server-env";
+
+export const grokModel = serverEnv("XAI_MODEL") ?? "grok-4.6";
 
 export const xaiChatUrl = "https://api.x.ai/v1/chat/completions";
