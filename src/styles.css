@@ -86,34 +86,42 @@ form {
 }
 
 .quire-mark-word {
-  white-space: nowrap;
+  display: inline-flex;
+  align-items: baseline;
 }
 
 .quire-mark-q {
+  position: relative;
   display: inline-block;
-  height: 1.371em;
-  width: auto;
   overflow: visible;
-  margin-right: -0.06em;
-  vertical-align: -0.335em;
 }
 
-.quire-mark-q path:not(.quire-mark-fold) {
+.quire-mark-flourish {
+  position: absolute;
+  bottom: -4%;
+  left: 24%;
+  width: 58%;
+  height: 32%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.quire-mark-flourish path:first-child {
   fill: currentColor;
 }
 
 .quire-mark-fold {
   fill: none;
   stroke: var(--paper);
-  stroke-width: 1.8;
+  stroke-width: 1.5;
 }
 
 .quire-mark-stitch {
   position: absolute;
   left: 8%;
   bottom: 0;
-  width: 1.15em;
-  height: 3px;
+  width: 1.45em;
+  height: 0.036em;
   background: var(--binding);
   opacity: 0.95;
 }

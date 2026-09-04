@@ -5,41 +5,39 @@ const flourish = "M10 5 C 30 5, 45 15, 85 5 L 88 12 C 55 25, 35 15, 10 32 Z";
 const fold = "M85 5 L 78 8";
 
 describe("Q v2 chrome mark", () => {
-  it("keeps the locked flourish and the custom Q vectors in the repo", () => {
+  it("keeps the locked flourish vector in the repo", () => {
     expect(existsSync("src/assets/quire-flourish.svg")).toBe(true);
-    expect(existsSync("src/assets/quire-q.svg")).toBe(true);
-    const flourishSvg = readFileSync("src/assets/quire-flourish.svg", "utf8");
-    const qSvg = readFileSync("src/assets/quire-q.svg", "utf8");
-    expect(flourishSvg).toMatch(/viewBox="0 0 100 40"/);
-    expect(flourishSvg).toContain(flourish);
-    expect(flourishSvg).toContain(fold);
-    expect(flourishSvg).toMatch(/fill="#1C1814"/);
-    expect(flourishSvg).toMatch(/stroke="#FAF7F1"/);
-    expect(qSvg).toContain(flourish);
-    expect(qSvg).toContain("M354 35Q406 35");
-    expect(qSvg).toMatch(/fill="#1C1814"/);
-    expect(flourishSvg).not.toMatch(/superdesign|SaaS|lockup/i);
-    expect(qSvg).not.toMatch(/superdesign|SaaS|lockup/i);
+    expect(existsSync("src/assets/quire-q.svg")).toBe(false);
+    const svg = readFileSync("src/assets/quire-flourish.svg", "utf8");
+    expect(svg).toMatch(/viewBox="0 0 100 40"/);
+    expect(svg).toContain(flourish);
+    expect(svg).toContain(fold);
+    expect(svg).toMatch(/fill="#1C1814"/);
+    expect(svg).toMatch(/stroke="#FAF7F1"/);
+    expect(svg).not.toMatch(/superdesign|SaaS|lockup/i);
   });
 
-  it("draws Source Serif Quire with the folded-quire Q and a binding stitch under Qui", () => {
+  it("draws live Source Serif Quire with the locked Q overlay and a binding stitch under Qui", () => {
     const mark = readFileSync("src/mark.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
+    expect(mark).toMatch(/productName\.slice\(0, 1\)/);
     expect(mark).toMatch(/productName\.slice\(1\)/);
-    expect(mark).toMatch(/role="img"/);
-    expect(mark).toMatch(/aria-label=\{productName\}/);
     expect(mark).toContain(flourish);
     expect(mark).toContain(fold);
-    expect(mark).toContain("M354 35Q406 35");
-    expect(mark).toMatch(/className="quire-mark-q"/);
+    expect(mark).toMatch(/className="quire-mark-flourish"/);
     expect(mark).toMatch(/className="quire-mark-stitch"/);
+    expect(mark).not.toMatch(/M354 35Q406 35/);
     expect(css).toMatch(/\.quire-mark \{[\s\S]*font-family:\s*var\(--font-serif\)/);
     expect(css).toMatch(/\.quire-mark \{[\s\S]*letter-spacing:\s*-0\.06em/);
     expect(css).toMatch(/\.quire-mark \{[\s\S]*font-weight:\s*600/);
     expect(css).toMatch(/\.quire-mark \{[\s\S]*color:\s*var\(--ink\)/);
-    expect(css).toMatch(/\.quire-mark-q \{[\s\S]*height:\s*1\.371em/);
+    expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*bottom:\s*-4%/);
+    expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*left:\s*24%/);
+    expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*width:\s*58%/);
+    expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*height:\s*32%/);
     expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*left:\s*8%/);
-    expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*width:\s*1\.15em/);
+    expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*width:\s*1\.45em/);
+    expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*height:\s*0\.036em/);
     expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*background:\s*var\(--binding\)/);
     expect(css).toMatch(/\.quire-mark-fold \{[\s\S]*stroke:\s*var\(--paper\)/);
   });
