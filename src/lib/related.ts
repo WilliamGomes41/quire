@@ -311,8 +311,7 @@ export async function runRelatedReporting(input: {
   searchPages: SearchPages;
 }): Promise<RelatedRailRecord> {
   const query = buildSearchQuery({ url: input.url, topic: input.topic });
-  const wanted = wantedTokens(input.url, input.topic);
-  if (!query || wanted.size === 0) {
+  if (!query) {
     return { status: "ok", related_reporting: [] };
   }
   let raw;

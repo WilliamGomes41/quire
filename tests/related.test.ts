@@ -218,7 +218,8 @@ describe("query hygiene: keep-host author tokens stay out", () => {
     });
     expect(empty).toEqual({ status: "ok", related_reporting: [] });
     expect(empty.status).not.toBe("failed");
-    expect(queries).toEqual([]);
+    expect(queries).toEqual(["over intelligentie"]);
+    expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
     expect(moreOnThisTopicCopy({ status: "ok", count: 0 }).kind).toBe("empty");
   });
 });
