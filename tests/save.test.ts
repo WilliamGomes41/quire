@@ -382,6 +382,57 @@ describe("successful retrieval writes related_reporting", () => {
     expect(clip.relatedReporting).toEqual([]);
     expect(clip.relatedRail?.status).not.toBe("failed");
   });
+
+  it("runs Brave for comparable and contrarian, and still keeps if Grok strings fail", async () => {
+    const store = memoryStore();
+    const queries: string[] = [];
+    const dual = await saveClip({ url: "https://example.com/dual" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchStrings: async () => ({
+        comparable: "harbour vote Praia reporting",
+        contrarian: "harbour vote opposition Praia",
+      }),
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(store.rows.has(dual.id)).toBe(true);
+    expect(queries).toEqual(["harbour vote Praia reporting", "harbour vote opposition Praia"]);
+    expect(dual.relatedRail).toEqual({ status: "ok" });
+    expect(dual.relatedReporting).toEqual([
+      { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+    ]);
+
+    const fallbackQueries: string[] = [];
+    const fallback = await saveClip({ url: "https://example.com/strings-fail" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchStrings: async () => {
+        throw new Error("Grok strings down");
+      },
+      searchPages: async ({ query }) => {
+        fallbackQueries.push(query);
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(store.rows.has(fallback.id)).toBe(true);
+    expect(fallbackQueries).toEqual(["A harbour vote Praia"]);
+    expect(fallback.relatedRail).toEqual({ status: "ok" });
+    expect(fallback.relatedReporting).toEqual([
+      { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+    ]);
+    expect(fallback.relatedRail?.status).not.toBe("failed");
+  });
 });
 
 describe("remove takes the clip off the pile", () => {

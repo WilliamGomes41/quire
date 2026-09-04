@@ -13,6 +13,7 @@ import {
   normalizeRelated,
   rankRelated,
   relatedPersist,
+  relatedSearchQueries,
   runRelatedReporting,
 } from "../src/lib/related";
 import { pagesFromSearchApi, resolveSearchPages, searchApis } from "../src/lib/search";
@@ -364,13 +365,192 @@ describe("Wikipedia hosts never appear on More on this topic", () => {
   });
 });
 
+describe("comparable + contrarian: Brave runs both, app merges", () => {
+  const harbourTopic = {
+    contentType: "News" as const,
+    topic: "A harbour vote",
+    entities: ["Praia"],
+  };
+
+  it("calls the search slot once per Grok string and merges, dedupes, caps at five", async () => {
+    const queries: string[] = [];
+    const merged = await runRelatedReporting({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchStrings: async () => ({
+        comparable: "harbour vote Praia reporting",
+        contrarian: "harbour vote opposition Praia",
+      }),
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        if (query.includes("opposition")) {
+          return [
+            { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+            { url: "https://news.example/against", title: "Harbour vote opposition in Praia" },
+          ];
+        }
+        return [
+          { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+          { url: "https://news.example/one", title: "Harbour vote reporting in Praia" },
+          { url: "https://en.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+        ];
+      },
+    });
+
+    expect(queries).toEqual(["harbour vote Praia reporting", "harbour vote opposition Praia"]);
+    expect(merged).toEqual({
+      status: "ok",
+      related_reporting: [
+        { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+        { url: "https://news.example/one", title: "Harbour vote reporting in Praia" },
+        { url: "https://news.example/against", title: "Harbour vote opposition in Praia" },
+      ],
+    });
+    expect(merged.status === "ok" ? merged.related_reporting.map((page) => page.url) : []).not.toContain(
+      "https://en.wikipedia.org/wiki/Harbour",
+    );
+
+    const capped = await runRelatedReporting({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchStrings: async () => ({
+        comparable: "harbour vote Praia reporting",
+        contrarian: "harbour vote opposition Praia",
+      }),
+      searchPages: async ({ query }) => {
+        const side = query.includes("opposition") ? "against" : "report";
+        return Array.from({ length: 4 }, (_, index) => ({
+          url: `https://news.example/${side}-${index}`,
+          title: `Harbour vote ${side} ${index} in Praia`,
+        }));
+      },
+    });
+    expect(capped.status).toBe("ok");
+    if (capped.status !== "ok") return;
+    expect(capped.related_reporting).toHaveLength(RELATED_REPORTING_MAX);
+    expect(RELATED_REPORTING_MAX).toBe(5);
+  });
+
+  it("still drops zero-overlap junk from the merged list", async () => {
+    const record = await runRelatedReporting({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchStrings: async () => ({
+        comparable: "harbour vote Praia reporting",
+        contrarian: "harbour vote opposition Praia",
+      }),
+      searchPages: async ({ query }) => {
+        if (query.includes("opposition")) {
+          return [{ url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" }];
+        }
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(record).toEqual({
+      status: "ok",
+      related_reporting: [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }],
+    });
+  });
+
+  it("falls back to the topic query when Grok does not produce two strings", async () => {
+    const queries: string[] = [];
+    const fallback = await runRelatedReporting({
+      url: "https://example.com/kept",
+      topic: { ...harbourTopic, date: "2026-09-01" },
+      searchStrings: async () => {
+        throw new Error("Grok strings down");
+      },
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(queries).toEqual(["A harbour vote Praia 2026-09-01"]);
+    expect(fallback).toEqual({
+      status: "ok",
+      related_reporting: [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }],
+    });
+    expect(fallback.status).not.toBe("failed");
+
+    const emptyStrings = await relatedSearchQueries({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchStrings: async () => ({ comparable: "", contrarian: "harbour vote opposition" }),
+    });
+    expect(emptyStrings).toEqual(["A harbour vote Praia"]);
+
+    const urlPicks = await relatedSearchQueries({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchStrings: async () => ({
+        comparable: "https://news.example/harbour",
+        contrarian: "https://news.example/against",
+      }),
+    });
+    expect(urlPicks).toEqual(["A harbour vote Praia"]);
+    expect(urlPicks.join(" ")).not.toMatch(/https?:\/\//);
+  });
+
+  it("does not send keep-host author tokens to Grok or Brave", async () => {
+    const seen: unknown[] = [];
+    const queries: string[] = [];
+    await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: {
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["William Gomes", "Praia"],
+      },
+      searchStrings: async (topic) => {
+        seen.push(topic);
+        return {
+          comparable: "William Gomes harbour vote Praia",
+          contrarian: "harbour vote opposition Praia",
+        };
+      },
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(seen).toEqual([
+      { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+    ]);
+    expect(JSON.stringify(seen).toLowerCase()).not.toMatch(/williamgomes/);
+    expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
+    expect(queries).toEqual(["harbour vote Praia", "harbour vote opposition Praia"]);
+  });
+
+  it("treats all-junk after the merged filter as ok+0, not fail", async () => {
+    const empty = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: harbourTopic,
+      searchStrings: async () => ({
+        comparable: "harbour vote Praia reporting",
+        contrarian: "harbour vote opposition Praia",
+      }),
+      searchPages: async () => [
+        { url: "https://en.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+        { url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" },
+      ],
+    });
+    expect(empty).toEqual({ status: "ok", related_reporting: [] });
+    expect(relatedPersist(empty).related_reporting).toEqual([]);
+    expect(empty.status).not.toBe("failed");
+  });
+});
+
 describe("related rail stays a search slot, not Grok web_search", () => {
   it("does not add web_search or a /press path", async () => {
     const { readFileSync, existsSync } = await import("node:fs");
     const related = readFileSync("src/lib/related.ts", "utf8");
+    const queries = readFileSync("src/lib/related-queries.ts", "utf8");
     const understanding = readFileSync("src/lib/understanding.ts", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
     expect(related).not.toMatch(/web_search/);
+    expect(queries).toMatch(/must not call web_search/);
+    expect(queries).not.toMatch(/tools:/);
+    expect(queries).not.toMatch(/search_parameters/);
     expect(understanding).toMatch(/must not call web_search/);
     expect(existsSync("src/routes/press.tsx")).toBe(false);
     expect(css).toMatch(/--paper: #faf7f1;/);
@@ -378,5 +558,6 @@ describe("related rail stays a search slot, not Grok web_search", () => {
     expect(css).toMatch(/--binding: #4a5c56;/);
     expect(related).not.toMatch(/britannica|encyclopedia|wiktionary|wikimedia/i);
     expect(related).toMatch(/wikipedia\.org/);
+    expect(Object.keys(searchApis)).toEqual(["search_api"]);
   });
 });

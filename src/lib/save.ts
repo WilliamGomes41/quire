@@ -7,6 +7,7 @@ import {
   type RelatedRailFail,
   type RelatedRailRecord,
 } from "./related";
+import { runGrokRelatedQueries, type RelatedSearchStringsFn } from "./related-queries";
 import { resolveSearchPages, type SearchPages } from "./search";
 import {
   runSourceHeadline,
@@ -44,6 +45,7 @@ export type ClipStore = {
 export type SaveOptions = {
   understand?: (input: { url: string }) => Promise<Understanding>;
   searchPages?: SearchPages;
+  searchStrings?: RelatedSearchStringsFn;
   readHeadline?: (input: { url: string }) => Promise<SourceHeadlineFound>;
 };
 
@@ -62,8 +64,9 @@ function emptyClipFields() {
 
 /**
  * Keep always saves. Persist first, then a source headline from the fetch,
- * then one Grok understanding, then the search rail.
- * Headline and search failure do not fail Keep. PROTOCOL §3 / §4 / §9.
+ * then one Grok understanding, then two short search strings, then the search rail.
+ * If the two strings are missing, the rail falls back to the topic query.
+ * Headline, Grok-string, and search failure do not fail Keep. PROTOCOL §3 / §4 / §9.
  */
 export async function saveClip(
   input: { url: string },
@@ -113,12 +116,14 @@ export async function saveClip(
   }
 
   const searchPages = options?.searchPages ?? resolveSearchPages();
+  const searchStrings = options?.searchStrings ?? runGrokRelatedQueries;
   let related: RelatedRailRecord | null = null;
   try {
     related = await runRelatedReporting({
       url: clip.url,
       topic: record?.status === "ok" ? record : null,
       searchPages,
+      searchStrings,
     });
   } catch (error) {
     related = relatedFail(error);
