@@ -303,6 +303,67 @@ describe("zero-overlap pages drop after rank", () => {
   });
 });
 
+describe("Wikipedia hosts never appear on More on this topic", () => {
+  const overlappingWiki = [
+    { url: "https://en.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+    { url: "https://nl.wikipedia.org/wiki/Haven", title: "Harbour vote in Praia" },
+    { url: "https://wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+    { url: "https://en.m.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+    { url: "https://nl.m.wikipedia.org/wiki/Haven", title: "Harbour vote in Praia" },
+    { url: "https://www.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+  ];
+
+  it("drops language, apex, and mobile Wikipedia hosts from related_reporting", async () => {
+    const record = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      searchPages: async () => overlappingWiki,
+    });
+    expect(record).toEqual({ status: "ok", related_reporting: [] });
+    expect(record.status).not.toBe("failed");
+    expect(normalizeRelated(overlappingWiki, "https://example.com/kept")).toEqual([]);
+  });
+
+  it("keeps a non-Wikipedia overlapping page and still excludes the keep URL", async () => {
+    const record = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      searchPages: async () => [
+        ...overlappingWiki,
+        { url: "https://williamgomes1.substack.com/p/harbour", title: "The keep" },
+        { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+        { url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" },
+      ],
+    });
+    expect(record).toEqual({
+      status: "ok",
+      related_reporting: [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }],
+    });
+    const urls = record.status === "ok" ? record.related_reporting.map((page) => page.url) : [];
+    expect(urls).not.toContain("https://en.wikipedia.org/wiki/Harbour");
+    expect(urls).not.toContain("https://nl.wikipedia.org/wiki/Haven");
+    expect(urls).not.toContain("https://wikipedia.org/wiki/Harbour");
+    expect(urls).not.toContain("https://en.m.wikipedia.org/wiki/Harbour");
+    expect(urls).not.toContain("https://williamgomes1.substack.com/p/harbour");
+    expect(urls).not.toContain("https://www.dbnl.org/tekst/oltmans");
+  });
+
+  it("treats all-Wikipedia after filter as ok+0, not fail", async () => {
+    const empty = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      searchPages: async () => overlappingWiki,
+    });
+    expect(empty).toEqual({ status: "ok", related_reporting: [] });
+    expect(relatedPersist(empty).related_reporting).toEqual([]);
+    expect(empty.status).not.toBe("failed");
+
+    const emptyCopy = moreOnThisTopicCopy({ status: "ok", count: 0 });
+    expect(emptyCopy).toEqual({ kind: "empty", text: nothingMoreOnTopic });
+    expect(emptyCopy.text).not.toMatch(/could not look/i);
+  });
+});
+
 describe("related rail stays a search slot, not Grok web_search", () => {
   it("does not add web_search or a /press path", async () => {
     const { readFileSync, existsSync } = await import("node:fs");
@@ -315,5 +376,7 @@ describe("related rail stays a search slot, not Grok web_search", () => {
     expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #4a5c56;/);
+    expect(related).not.toMatch(/britannica|encyclopedia|wiktionary|wikimedia/i);
+    expect(related).toMatch(/wikipedia\.org/);
   });
 });

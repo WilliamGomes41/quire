@@ -361,6 +361,27 @@ describe("successful retrieval writes related_reporting", () => {
       { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
     ]);
   });
+
+  it("still keeps when related hits are Wikipedia, and persists ok+0", async () => {
+    const store = memoryStore();
+    const clip = await saveClip({ url: "https://williamgomes1.substack.com/p/harbour" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["Praia"],
+      }),
+      searchPages: async () => [
+        { url: "https://en.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+        { url: "https://nl.wikipedia.org/wiki/Haven", title: "Harbour vote in Praia" },
+        { url: "https://en.m.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
+      ],
+    });
+    expect(store.rows.has(clip.id)).toBe(true);
+    expect(clip.relatedRail).toEqual({ status: "ok" });
+    expect(clip.relatedReporting).toEqual([]);
+    expect(clip.relatedRail?.status).not.toBe("failed");
+  });
 });
 
 describe("remove takes the clip off the pile", () => {

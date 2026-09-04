@@ -49,6 +49,16 @@ function canonicalizeUrl(value: string) {
   }
 }
 
+/** wikipedia.org and *.wikipedia.org, including language and mobile hosts. */
+function isWikipediaHost(url: string) {
+  try {
+    const hostname = new URL(url).hostname.replace(/^www\./i, "").toLowerCase();
+    return hostname === "wikipedia.org" || hostname.endsWith(".wikipedia.org");
+  } catch {
+    return false;
+  }
+}
+
 function tokens(value: string) {
   return compact(value, 2000)
     .toLowerCase()
@@ -198,6 +208,7 @@ export function normalizeRelated(
   for (const item of raw) {
     const url = canonicalizeUrl(item.url ?? "");
     if (!url || url === keep) continue;
+    if (isWikipediaHost(url)) continue;
     const title = compact(item.title, 500);
     const snippet = compact(item.snippet, 1000);
     const date = compact(item.date, 10);
