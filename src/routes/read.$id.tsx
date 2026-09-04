@@ -4,6 +4,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { couldNotFetchWords, couldNotPrint, printThisIssue, productName } from "../copy";
 import { issueFromKeptWords } from "../lib/bind";
 import { fetchArticleWords } from "../lib/article";
+import type { BodyBlock } from "../lib/article";
 import {
   clampSheetIndex,
   composeIssue,
@@ -14,6 +15,7 @@ import {
   type SequenceSheet,
   type SheetFigure,
 } from "../lib/compose";
+import { qrMatrix } from "../lib/qr";
 import { composeBoundPrint } from "../lib/print-bound";
 import { offerPrint, paperNameFor } from "../lib/print";
 import { clipStore, issueStore } from "../lib/store";
@@ -211,35 +213,71 @@ function ReadIssue() {
   );
 }
 
+function pieceBlocks(sheet: SequenceSheet): BodyBlock[] {
+  if (sheet.blocks?.length) {
+    if (sheet.intent.composition === "quote-led" && sheet.pullQuotes?.[0]) {
+      const leadQuote = sheet.pullQuotes[0];
+      let skipped = false;
+      return sheet.blocks.filter((block) => {
+        if (!skipped && block.kind === "pullQuote" && block.text === leadQuote) {
+          skipped = true;
+          return false;
+        }
+        return true;
+      });
+    }
+    return sheet.blocks;
+  }
+  return sheet.paragraphs.map((text) => ({ kind: "paragraph" as const, text }));
+}
+
 function PieceSheet({ sheet }: { sheet: SequenceSheet }) {
-  const firstLong = sheet.paragraphs.findIndex((paragraph) => paragraph.length > 80);
+  const screening = sheet.intent.treatment === "screening";
+  const opener = sheet.intent.composition === "visual-opener" && sheet.figure;
+  const quote = sheet.intent.composition === "quote-led" ? sheet.pullQuotes?.[0] : undefined;
+  const blocks = pieceBlocks(sheet);
+  const firstLong = blocks.findIndex((block) => block.kind === "paragraph" && block.text.length > 80);
   return (
     <>
       <div className="running-head">
         <span>{productName}</span>
         <span className="folio">{sheet.folio}</span>
       </div>
-      {sheet.intent.composition === "visual-opener" && sheet.figure ? (
-        <SheetPhoto figure={sheet.figure} />
+      {quote ? (
+        <blockquote className="pull-quote">
+          <p>{quote}</p>
+        </blockquote>
       ) : null}
+      {opener ? <SheetPhoto figure={sheet.figure!} /> : null}
       <header className="piece-header">
         <h2>{sheet.headline}</h2>
       </header>
-      {sheet.intent.composition !== "visual-opener" && sheet.figure ? (
-        <SheetPhoto figure={sheet.figure} />
-      ) : null}
+      {!opener && sheet.figure ? <SheetPhoto figure={sheet.figure} /> : null}
       {sheet.take ? (
         <aside className="take">
           <p>{sheet.take.text}</p>
         </aside>
       ) : null}
-      <div className="piece-body">
-        {sheet.paragraphs.map((paragraph, index) => (
-          <p key={`${sheet.folio}-${index}`} className={index === firstLong ? "drop" : undefined}>
-            {paragraph}
-          </p>
-        ))}
+      <div className={screening ? "piece-body briefing" : "piece-body"}>
+        {blocks.map((block, index) =>
+          block.kind === "subhead" ? (
+            <h3 key={`${sheet.folio}-h-${index}`}>{block.text}</h3>
+          ) : block.kind === "pullQuote" ? (
+            <blockquote key={`${sheet.folio}-q-${index}`} className="pull-quote">
+              <p>{block.text}</p>
+            </blockquote>
+          ) : (
+            <p
+              key={`${sheet.folio}-${index}`}
+              className={!screening && index === firstLong ? "drop" : undefined}
+            >
+              {block.text}
+            </p>
+          ),
+        )}
       </div>
+      {screening && sheet.videoUrl ? <SheetQr url={sheet.videoUrl} /> : null}
+      {sheet.colophon ? <p className="colophon">{sheet.colophon}</p> : null}
     </>
   );
 }
@@ -248,6 +286,32 @@ function SheetPhoto({ figure }: { figure: SheetFigure }) {
   return (
     <figure className={figure.fit === "cover" ? "sheet-figure cover" : "sheet-figure contain"}>
       <img src={figure.url} alt="" />
+      {figure.caption || figure.credit ? (
+        <figcaption>
+          {figure.caption ? <span>{figure.caption}</span> : null}
+          {figure.credit ? <span className="credit">{figure.credit}</span> : null}
+        </figcaption>
+      ) : null}
     </figure>
+  );
+}
+
+function SheetQr({ url }: { url: string }) {
+  const { data, size } = qrMatrix(url);
+  return (
+    <svg
+      className="sheet-qr"
+      viewBox={`0 0 ${size} ${size}`}
+      width={104}
+      height={104}
+      shapeRendering="crispEdges"
+      aria-hidden
+    >
+      {data.flatMap((row, y) =>
+        row.flatMap((on, x) =>
+          on ? <rect key={`${x}-${y}`} x={x} y={y} width={1} height={1} /> : [],
+        ),
+      )}
+    </svg>
   );
 }

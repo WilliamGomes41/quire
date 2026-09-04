@@ -273,6 +273,49 @@ describe("create issue binds a visible magazine page", () => {
     expect(page.cover.masthead).toBe("Quire");
   });
 
+  it("round-trips source-owned magazine fields and the keep topic", async () => {
+    const stored = await (
+      await issueStore()
+    ).insert({
+      id: "issue-magazine-fields",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [
+        {
+          url: "https://example.com/kept",
+          role: "original",
+          headline: "The harbour vote",
+          paragraphs: ["The assembly met at dusk in Praia."],
+          topic: "A harbour vote",
+          figure: "https://images.example/harbour.jpg",
+          figureCaption: "The quay at dusk",
+          figureCredit: "Praia desk",
+          figureKind: "photo",
+          publisher: "Praia Daily",
+          published: "2026-09-01",
+          videoUrl: "https://youtube.com/watch?v=harbour",
+          pullQuotes: ["The motion carried after a quiet count."],
+          subheads: ["On the quay"],
+        },
+      ],
+    });
+    const got = await (await issueStore()).get(stored.id);
+    expect(got?.pieces[0]).toMatchObject({
+      topic: "A harbour vote",
+      figureCaption: "The quay at dusk",
+      figureCredit: "Praia desk",
+      publisher: "Praia Daily",
+      published: "2026-09-01",
+      videoUrl: "https://youtube.com/watch?v=harbour",
+    });
+    const page = composeIssue(got!);
+    expect(page.sequence[0]?.colophon).toBe("Praia Daily · 1 September 2026");
+    expect(page.sequence[0]?.figure?.caption).toBe("The quay at dusk");
+    expect(page.sequence[0]?.intent.treatment).toBe("screening");
+  });
+
   it("stays unfinished while fetchArticleWords is in flight", async () => {
     const clips = memoryClips();
     const clip = await saveClip({ url: "https://example.com/kept" }, clips, {

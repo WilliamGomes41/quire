@@ -5,9 +5,10 @@
  */
 
 import { contentsKicker, productName } from "../copy";
+import type { BodyBlock, FigureKind } from "./article";
 import type { BoundIssue, BoundPiece } from "./bind";
 import { leadPiece } from "./bind";
-import { designIntent, type DesignIntent } from "./design";
+import { designIntent, figureFitFor, type DesignIntent } from "./design";
 import { takeText } from "./take";
 
 export type FigureFit = DesignIntent["figure_fit"];
@@ -15,6 +16,9 @@ export type FigureFit = DesignIntent["figure_fit"];
 export type SheetFigure = {
   url: string;
   fit: FigureFit;
+  caption?: string;
+  credit?: string;
+  kind?: FigureKind;
 };
 
 export type PageLead = {
@@ -31,6 +35,10 @@ export type SequenceSheet = {
   folio: string;
   figure?: SheetFigure;
   take?: { text: string };
+  blocks?: BodyBlock[];
+  pullQuotes?: string[];
+  colophon?: string;
+  videoUrl?: string;
 };
 
 export type PagePlan = {
@@ -75,9 +83,111 @@ function boundMeta(iso: string) {
   });
 }
 
-function asFigure(url: string | undefined, fit: FigureFit): SheetFigure | undefined {
-  if (!url) return undefined;
-  return { url, fit };
+function asFigure(piece: BoundPiece, fit: FigureFit): SheetFigure | undefined {
+  if (!piece.figure) return undefined;
+  const kind = piece.figureKind;
+  return {
+    url: piece.figure,
+    fit: figureFitFor(kind, fit),
+    ...(piece.figureCaption ? { caption: piece.figureCaption } : {}),
+    ...(piece.figureCredit ? { credit: piece.figureCredit } : {}),
+    ...(kind ? { kind } : {}),
+  };
+}
+
+function hostTokens(url: string) {
+  try {
+    return new URL(url).hostname
+      .replace(/^www\./i, "")
+      .toLowerCase()
+      .split(".")
+      .filter((part) => part.length > 2);
+  } catch {
+    return [];
+  }
+}
+
+function topicTokens(piece: BoundPiece) {
+  const noise = new Set(hostTokens(piece.url));
+  return new Set(
+    [piece.topic, piece.headline, piece.paragraphs[0] ?? ""]
+      .filter(Boolean)
+      .join(" ")
+      .toLowerCase()
+      .split(/[^\p{L}\p{N}]+/u)
+      .filter((token) => token.length > 2 && !noise.has(token)),
+  );
+}
+
+function topicOverlap(a: BoundPiece, b: BoundPiece) {
+  const left = topicTokens(a);
+  const right = topicTokens(b);
+  let n = 0;
+  for (const token of left) if (right.has(token)) n += 1;
+  return n;
+}
+
+/** Lead first. Related cluster by topic, never by hostname. */
+export function clusterPieces(pieces: BoundPiece[]): BoundPiece[] {
+  const lead = leadPiece(pieces);
+  if (!lead) return pieces;
+  const rest = pieces.filter((piece) => piece.url !== lead.url);
+  if (rest.length === 0) return [lead];
+
+  const topicOf = (piece: BoundPiece) => (piece.topic ?? "").trim().toLowerCase();
+  const groups = new Map<string, BoundPiece[]>();
+  const unkeyed: BoundPiece[] = [];
+  for (const piece of rest) {
+    const key = topicOf(piece);
+    if (!key) {
+      unkeyed.push(piece);
+      continue;
+    }
+    const list = groups.get(key) ?? [];
+    list.push(piece);
+    groups.set(key, list);
+  }
+
+  const ordered: BoundPiece[] = [lead];
+  const leadKey = topicOf(lead);
+  if (leadKey && groups.has(leadKey)) {
+    ordered.push(...(groups.get(leadKey) ?? []));
+    groups.delete(leadKey);
+  }
+  for (const list of groups.values()) {
+    ordered.push(...list);
+  }
+  ordered.push(
+    ...unkeyed
+      .map((piece) => ({ piece, score: topicOverlap(lead, piece) }))
+      .sort((a, b) => b.score - a.score)
+      .map((item) => item.piece),
+  );
+  return ordered;
+}
+
+function quietDate(value: string) {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^\d{4}-\d{2}-\d{2}/.test(trimmed)) {
+    const parsed = new Date(trimmed);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toLocaleDateString("en-GB", {
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+        timeZone: "UTC",
+      });
+    }
+  }
+  return trimmed;
+}
+
+/** Quiet publisher · date. Source-owned only. Never a hostname fallback. */
+export function pieceColophon(piece: BoundPiece) {
+  const publisher = piece.publisher?.trim() ?? "";
+  const date = piece.published ? quietDate(piece.published) : "";
+  return [publisher, date].filter(Boolean).join(" · ");
 }
 
 /**
@@ -105,7 +215,8 @@ export function composeIssue(issue: BoundIssue): PagePlan {
   }
 
   const take = takeText(issue.take);
-  const secondaryPieces = issue.pieces.filter((piece) => piece.url !== lead.url);
+  const clustered = clusterPieces(issue.pieces);
+  const secondaryPieces = clustered.filter((piece) => piece.url !== lead.url);
   const secondary = secondaryPieces.map(asLead);
   const hasSecondary = secondary.length > 0;
   const leadIntent = designIntent({
@@ -115,9 +226,12 @@ export function composeIssue(issue: BoundIssue): PagePlan {
     role: "original",
     chars: charsOf(lead.paragraphs),
     index: 0,
+    isVideo: Boolean(lead.videoUrl),
+    figureKind: lead.figureKind,
+    hasPullQuote: Boolean(lead.pullQuotes?.length),
   });
 
-  const sequence: SequenceSheet[] = issue.pieces.map((piece, index) => {
+  const sequence: SequenceSheet[] = clustered.map((piece, index) => {
     const isLead = piece.url === lead.url;
     const intent = isLead
       ? leadIntent
@@ -125,23 +239,33 @@ export function composeIssue(issue: BoundIssue): PagePlan {
           hasTake: false,
           hasSecondary,
           hasFigure: Boolean(piece.figure),
-          role: piece.role,
+          role: "related",
           chars: charsOf(piece.paragraphs),
           index,
+          isVideo: Boolean(piece.videoUrl),
+          figureKind: piece.figureKind,
+          hasPullQuote: Boolean(piece.pullQuotes?.length),
         });
-    const figure = asFigure(piece.figure, intent.figure_fit);
+    const figure = asFigure(piece, intent.figure_fit);
+    const colophon = pieceColophon(piece);
+    const briefing =
+      intent.treatment === "screening" ? piece.paragraphs.slice(0, 2) : piece.paragraphs;
     return {
       headline: piece.headline,
-      paragraphs: piece.paragraphs,
+      paragraphs: briefing,
       intent,
       folio: folioOf(index + 3),
       ...(figure ? { figure } : {}),
       ...(isLead && take ? { take: { text: take } } : {}),
+      ...(piece.blocks?.length && intent.treatment !== "screening" ? { blocks: piece.blocks } : {}),
+      ...(piece.pullQuotes?.length ? { pullQuotes: piece.pullQuotes } : {}),
+      ...(colophon ? { colophon } : {}),
+      ...(piece.videoUrl ? { videoUrl: piece.videoUrl } : {}),
     };
   });
 
   const title = issue.title || lead.headline;
-  const coverFigure = asFigure(lead.figure, leadIntent.figure_fit);
+  const coverFigure = asFigure(lead, leadIntent.figure_fit);
   const coverKicker = sourceOwnedCoverLine(issue);
 
   return {

@@ -32,6 +32,7 @@ describe("Read composition", () => {
     expect(page.take).toBeUndefined();
     expect(page.lead.paragraphs).toEqual(issue.pieces[0]?.paragraphs);
     expect(page.intent.take_slot).toBe("none");
+    expect(page.intent.treatment).toBe("feature");
     expect(page.intent.composition).toBe("essay");
     expect(designContract.treatments).toContain(page.intent.treatment);
     expect(page.sequence[0]?.paragraphs.join(" ")).toMatch(/assembly met at dusk/);
