@@ -11,6 +11,7 @@ import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf
 import type { BoundIssue } from "./bind";
 import { composeIssue, type PagePlan } from "./compose";
 import { paperBox, printPlan, type PaperName, type PrintSheet } from "./print";
+import { qrMatrix } from "./qr";
 
 const PAPER = rgb(250 / 255, 247 / 255, 241 / 255);
 const INK = rgb(28 / 255, 24 / 255, 20 / 255);
@@ -275,13 +276,21 @@ function drawContents(book: Book, sheet: Extract<PrintSheet, { kind: "contents" 
 
 async function drawPiece(book: Book, sheet: Extract<PrintSheet, { kind: "piece" }>, page: PagePlan) {
   freshPage(book, sheet.folio);
-  const figure = page.sequence.find((item) => item.folio === sheet.folio)?.figure;
-  if (sheet.intent.composition === "visual-opener" && figure) {
-    await drawFigure(book, figure.url, sheet.folio);
+  const planned = page.sequence.find((item) => item.folio === sheet.folio);
+  const figure = planned?.figure;
+  const quote =
+    sheet.intent.composition === "quote-led" ? planned?.pullQuotes?.[0] : undefined;
+  if (quote) {
+    write(book, quote, book.faces.serifIt, 16, 22);
+    book.y -= 8;
   }
-  write(book, sheet.headline, book.faces.serif, 26, 30);
+  if (sheet.intent.composition === "visual-opener" && figure) {
+    await drawFigure(book, figure.url, sheet.folio, figure.caption, figure.credit);
+  }
+  const headSize = sheet.intent.treatment === "feature" ? 30 : sheet.intent.treatment === "compact" ? 20 : 26;
+  write(book, sheet.headline, book.faces.serif, headSize, headSize + 4);
   if (sheet.intent.composition !== "visual-opener" && figure) {
-    await drawFigure(book, figure.url, sheet.folio);
+    await drawFigure(book, figure.url, sheet.folio, figure.caption, figure.credit);
   }
   if (sheet.take) {
     book.y -= 6;
@@ -293,10 +302,22 @@ async function drawPiece(book: Book, sheet: Extract<PrintSheet, { kind: "piece" 
   const gutter = 18;
   const colWidth = columns === 2 ? (book.width - gutter) / 2 : book.width;
   if (columns === 1) {
-    for (const paragraph of sheet.paragraphs) {
+    const blocks = planned?.blocks?.length
+      ? planned.blocks.filter((block) => !(quote && block.kind === "pullQuote" && block.text === quote))
+      : sheet.paragraphs.map((text) => ({ kind: "paragraph" as const, text }));
+    for (const block of blocks) {
       book.y -= 4;
-      write(book, paragraph, book.faces.serif, 11, 16);
+      if (block.kind === "subhead") {
+        write(book, block.text, book.faces.serif, 13, 18);
+        continue;
+      }
+      if (block.kind === "pullQuote") {
+        write(book, block.text, book.faces.serifIt, 13, 18);
+        continue;
+      }
+      write(book, block.text, book.faces.serif, 11, 16);
     }
+    closePiece(book, sheet, planned);
     return;
   }
   const lines = sheet.paragraphs.flatMap((paragraph, index) => [
@@ -330,9 +351,45 @@ async function drawPiece(book: Book, sheet: Extract<PrintSheet, { kind: "piece" 
     y -= leading;
   }
   book.y = y;
+  closePiece(book, sheet, planned);
 }
 
-async function drawFigure(book: Book, url: string, folio: string) {
+function closePiece(
+  book: Book,
+  sheet: Extract<PrintSheet, { kind: "piece" }>,
+  planned: PagePlan["sequence"][number] | undefined,
+) {
+  if (sheet.intent.treatment === "screening" && planned?.videoUrl) {
+    drawQr(book, planned.videoUrl, sheet.folio);
+  }
+  if (planned?.colophon) {
+    book.y -= 18;
+    write(book, planned.colophon, book.faces.sans, 8, 12, MUTED);
+  }
+}
+
+function drawQr(book: Book, url: string, folio: string) {
+  const { data, size } = qrMatrix(url);
+  const cell = 2.4;
+  const qr = size * cell;
+  need(book, qr + 16, folio);
+  book.y -= 8;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      if (!data[y]?.[x]) continue;
+      book.page.drawRectangle({
+        x: book.left + x * cell,
+        y: book.y - (y + 1) * cell,
+        width: cell,
+        height: cell,
+        color: INK,
+      });
+    }
+  }
+  book.y -= qr + 12;
+}
+
+async function drawFigure(book: Book, url: string, folio: string, caption?: string, credit?: string) {
   const image = await tryEmbed(book.doc, url);
   if (!image) return;
   const maxH = 180;
@@ -346,7 +403,10 @@ async function drawFigure(book: Book, url: string, folio: string) {
     width: w,
     height: h,
   });
-  book.y -= h + 16;
+  book.y -= h + 10;
+  if (caption) write(book, caption, book.faces.sans, 8, 11, MUTED);
+  if (credit) write(book, credit, book.faces.sans, 8, 11, MUTED);
+  book.y -= 6;
 }
 
 async function tryEmbed(doc: PDFDocument, url: string): Promise<PDFImage | null> {

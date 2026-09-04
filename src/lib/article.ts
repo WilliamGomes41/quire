@@ -5,11 +5,27 @@
 
 import { couldNotFetchWords } from "../copy";
 
+export type FigureKind = "photo" | "diagram" | "chart";
+
+export type BodyBlock =
+  | { kind: "paragraph"; text: string }
+  | { kind: "subhead"; text: string }
+  | { kind: "pullQuote"; text: string };
+
 export type ArticleWords = {
   url: string;
   headline: string;
   paragraphs: string[];
   figure?: string;
+  figureCaption?: string;
+  figureCredit?: string;
+  figureKind?: FigureKind;
+  publisher?: string;
+  published?: string;
+  pullQuotes?: string[];
+  subheads?: string[];
+  blocks?: BodyBlock[];
+  videoUrl?: string;
 };
 
 /**
@@ -169,6 +185,15 @@ export function figureFromHtml(html: string, baseUrl: string) {
   }
 }
 
+function absPublicUrl(raw: string, baseUrl: string) {
+  try {
+    const url = new URL(raw, baseUrl || undefined);
+    return isPublicHttpUrl(url.href) ? url.href : "";
+  } catch {
+    return "";
+  }
+}
+
 function paragraphsFrom(html: string) {
   const fromP = [...html.matchAll(/<p\b[^>]*>([\s\S]*?)<\/p>/gi)]
     .map((match) => compactText(stripTags(match[1]), 8000))
@@ -182,6 +207,124 @@ function paragraphsFrom(html: string) {
     .filter((part) => part.length > 1);
 }
 
+function bodyFrom(html: string): {
+  paragraphs: string[];
+  blocks?: BodyBlock[];
+  pullQuotes?: string[];
+  subheads?: string[];
+} {
+  const blocks: BodyBlock[] = [];
+  const re = /<(p|h2|h3|blockquote)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+  for (const match of html.matchAll(re)) {
+    const tag = match[1].toLowerCase();
+    const limit = tag === "p" ? 8000 : 2000;
+    const text = compactText(stripTags(match[2] ?? ""), limit);
+    if (text.length <= 1) continue;
+    if (tag === "p") blocks.push({ kind: "paragraph", text });
+    else if (tag === "blockquote") blocks.push({ kind: "pullQuote", text });
+    else blocks.push({ kind: "subhead", text });
+  }
+  const paragraphs = blocks.filter((block) => block.kind === "paragraph").map((block) => block.text);
+  if (paragraphs.length === 0) {
+    return { paragraphs: paragraphsFrom(html) };
+  }
+  const pullQuotes = blocks.filter((block) => block.kind === "pullQuote").map((block) => block.text);
+  const subheads = blocks.filter((block) => block.kind === "subhead").map((block) => block.text);
+  if (pullQuotes.length === 0 && subheads.length === 0) {
+    return { paragraphs };
+  }
+  return {
+    paragraphs,
+    blocks,
+    ...(pullQuotes.length ? { pullQuotes } : {}),
+    ...(subheads.length ? { subheads } : {}),
+  };
+}
+
+function figureCaptionFrom(html: string) {
+  const caption = html.match(/<figcaption\b[^>]*>([\s\S]*?)<\/figcaption>/i);
+  if (caption?.[1]) return compactText(stripTags(caption[1]), 400);
+  return metaContent(html, "og:image:alt", 400) || metaContent(html, "twitter:image:alt", 400);
+}
+
+function figureCreditFrom(html: string) {
+  const cite = html.match(/<figure\b[\s\S]*?<cite\b[^>]*>([\s\S]*?)<\/cite>/i);
+  if (cite?.[1]) return compactText(stripTags(cite[1]), 200);
+  return (
+    metaContent(html, "copyright", 200) ||
+    metaContent(html, "credit", 200) ||
+    metaContent(html, "image-credit", 200) ||
+    metaContent(html, "photographer", 200)
+  );
+}
+
+function figureKindFrom(caption: string, credit: string, url: string): FigureKind | undefined {
+  const hay = `${caption} ${credit} ${url}`.toLowerCase();
+  if (/\b(chart|graph|plot)\b/.test(hay)) return "chart";
+  if (/\b(diagram|schematic|flowchart)\b/.test(hay)) return "diagram";
+  return url ? "photo" : undefined;
+}
+
+function publisherFrom(html: string) {
+  return (
+    metaContent(html, "og:site_name", 120) ||
+    metaContent(html, "publisher", 120) ||
+    metaContent(html, "application-name", 120)
+  );
+}
+
+function publishedFrom(html: string) {
+  const time = html.match(/<time\b[^>]*datetime=["']([^"']+)["']/i);
+  return (
+    metaContent(html, "article:published_time", 40) ||
+    metaContent(html, "og:article:published_time", 40) ||
+    metaContent(html, "datePublished", 40) ||
+    metaContent(html, "article:published", 40) ||
+    (time?.[1] ? compactText(decodeEntities(time[1]), 40) : "")
+  );
+}
+
+function isVideoHost(hostname: string) {
+  const host = hostname.replace(/^www\./i, "").toLowerCase();
+  return (
+    host === "youtu.be" ||
+    host === "youtube.com" ||
+    host.endsWith(".youtube.com") ||
+    host === "vimeo.com" ||
+    host.endsWith(".vimeo.com")
+  );
+}
+
+/** Source-owned video page or embed. Never invented. Public http only. */
+export function videoFromHtml(html: string, baseUrl: string) {
+  try {
+    const page = new URL(baseUrl);
+    if (isVideoHost(page.hostname)) return page.href;
+  } catch {
+    /* keep looking */
+  }
+  const type = metaContent(html, "og:type", 80).toLowerCase();
+  if (type.startsWith("video")) {
+    return absPublicUrl(baseUrl, baseUrl);
+  }
+  const tagged =
+    metaContent(html, "og:video", 2000) ||
+    metaContent(html, "og:video:url", 2000) ||
+    metaContent(html, "twitter:player", 2000);
+  const fromMeta = tagged ? absPublicUrl(tagged, baseUrl) : "";
+  if (fromMeta) return fromMeta;
+  const iframe = html.match(/<iframe\b[^>]*src=["']([^"']+)["']/i);
+  if (iframe?.[1]) {
+    try {
+      const embed = new URL(iframe[1], baseUrl);
+      if (isVideoHost(embed.hostname) && isPublicHttpUrl(embed.href)) return embed.href;
+    } catch {
+      return "";
+    }
+  }
+  return "";
+}
+
 export function extractArticleWords(html: string, url: string): ArticleWords {
   const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -189,16 +332,31 @@ export function extractArticleWords(html: string, url: string): ArticleWords {
     .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ");
   const scoped = sliceTagged(cleaned, "article") || sliceTagged(cleaned, "main") || cleaned;
   const headline = headlineFrom(scoped) || headlineFrom(cleaned);
-  const paragraphs = paragraphsFrom(scoped);
-  if (!headline && paragraphs.length === 0) {
+  const body = bodyFrom(scoped);
+  if (!headline && body.paragraphs.length === 0) {
     throw new Error(couldNotFetchWords);
   }
   const figure = figureFromHtml(cleaned, url);
+  const caption = figure ? figureCaptionFrom(cleaned) : "";
+  const credit = figure ? figureCreditFrom(cleaned) : "";
+  const kind = figure ? figureKindFrom(caption, credit, figure) : undefined;
+  const publisher = publisherFrom(cleaned);
+  const published = publishedFrom(cleaned);
+  const videoUrl = videoFromHtml(cleaned, url);
   return {
     url,
     headline: headline || compactText(url, 400),
-    paragraphs,
+    paragraphs: body.paragraphs,
+    ...(body.blocks ? { blocks: body.blocks } : {}),
+    ...(body.pullQuotes ? { pullQuotes: body.pullQuotes } : {}),
+    ...(body.subheads ? { subheads: body.subheads } : {}),
     ...(figure ? { figure } : {}),
+    ...(caption ? { figureCaption: caption } : {}),
+    ...(credit ? { figureCredit: credit } : {}),
+    ...(kind ? { figureKind: kind } : {}),
+    ...(publisher ? { publisher } : {}),
+    ...(published ? { published } : {}),
+    ...(videoUrl ? { videoUrl } : {}),
   };
 }
 

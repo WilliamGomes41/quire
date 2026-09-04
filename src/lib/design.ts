@@ -46,11 +46,20 @@ export type PiecePlanInput = {
   role?: "original" | "related";
   chars?: number;
   index?: number;
+  isVideo?: boolean;
+  figureKind?: "photo" | "diagram" | "chart";
+  hasPullQuote?: boolean;
 };
 
 /** Photographs sit at intrinsic ratio unless Intent already says cover. Cover is never the fallback. */
 export function defaultFigureFit() {
   return "contain" as const;
+}
+
+/** Diagrams and charts contain only. Photographs contain unless Intent already says cover. */
+export function figureFitFor(kind?: "photo" | "diagram" | "chart", intentFit?: DesignIntent["figure_fit"]) {
+  if (kind === "diagram" || kind === "chart") return "contain" as const;
+  return intentFit ?? defaultFigureFit();
 }
 
 export function designIntent(input: PiecePlanInput): DesignIntent {
@@ -62,20 +71,23 @@ export function designIntent(input: PiecePlanInput): DesignIntent {
   let composition: DesignIntent["composition"] = "essay";
   let image_emphasis: DesignIntent["image_emphasis"] = hasFigure ? "inline" : "none";
 
-  if (isLead && input.hasSecondary) {
+  if (input.isVideo) {
+    treatment = "screening";
+    composition = "screening";
+    image_emphasis = hasFigure ? "dominant" : "none";
+  } else if (isLead) {
     treatment = "feature";
     composition = hasFigure ? "visual-opener" : "essay";
     image_emphasis = hasFigure ? "dominant" : "none";
-  } else if (isLead && hasFigure) {
-    treatment = "essay";
-    composition = "visual-opener";
-    image_emphasis = "dominant";
-  } else if (!isLead && short) {
-    treatment = "compact";
-    composition = "compact";
-  } else if (!isLead && hasFigure) {
+  } else if (hasFigure) {
     treatment = "illustrated";
     composition = (input.index ?? 0) % 2 === 0 ? "split-left" : "split-right";
+    image_emphasis = "inline";
+  } else if (short) {
+    treatment = "compact";
+    composition = "compact";
+  } else if (input.hasPullQuote) {
+    composition = "quote-led";
   }
 
   return {
@@ -85,6 +97,6 @@ export function designIntent(input: PiecePlanInput): DesignIntent {
     body_flow: long && treatment === "feature" ? "two" : "single",
     section_transitions: input.hasSecondary ? "standalone" : "none",
     take_slot: input.hasTake && isLead ? "body-with-sidebar" : "none",
-    figure_fit: defaultFigureFit(),
+    figure_fit: figureFitFor(input.figureKind),
   };
 }

@@ -1,6 +1,6 @@
 import { openDb } from "./db";
-import type { BoundIssue, BoundPiece, IssueStore } from "./bind";
-import { canonicalizeUrl, isPublicHttpUrl, jsonText, jsonValue } from "./article";
+import { readOwnedPieceFields, type BoundIssue, type BoundPiece, type IssueStore } from "./bind";
+import { canonicalizeUrl, jsonText, jsonValue } from "./article";
 import {
   readRelatedRail,
   readRelatedReporting,
@@ -87,17 +87,13 @@ function readPieces(value: unknown): BoundPiece[] {
     if (!Array.isArray(rec.paragraphs) || rec.paragraphs.some((p) => typeof p !== "string")) {
       return [];
     }
-    const figure =
-      typeof rec.figure === "string" && isPublicHttpUrl(rec.figure.trim()) ? rec.figure.trim() : "";
-    const coverLine = typeof rec.coverLine === "string" ? rec.coverLine.trim() : "";
     return [
       {
         url: rec.url,
         role: rec.role,
         headline: typeof rec.headline === "string" ? rec.headline : rec.url,
         paragraphs: rec.paragraphs.filter((p): p is string => typeof p === "string" && p.trim() !== ""),
-        ...(figure ? { figure } : {}),
-        ...(coverLine ? { coverLine } : {}),
+        ...readOwnedPieceFields(rec),
       },
     ];
   });

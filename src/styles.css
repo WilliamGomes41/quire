@@ -824,6 +824,72 @@ button.toc-row:hover {
   object-fit: cover;
 }
 
+.sheet-figure figcaption {
+  margin-top: 0.55rem;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+.sheet-figure .credit {
+  display: block;
+  margin-top: 0.15rem;
+}
+
+.pull-quote {
+  max-width: 38rem;
+  margin: 1.75rem 0 0;
+  padding: 0;
+  border: 0;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-style: italic;
+  font-weight: 400;
+  line-height: 1.35;
+}
+
+.pull-quote p {
+  margin: 0;
+}
+
+.piece-body h3 {
+  margin: 1.6rem 0 0.65rem;
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.colophon {
+  margin: 3.25rem 0 0;
+  font-family: var(--font-sans);
+  font-size: 0.72rem;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.sheet-qr {
+  display: block;
+  margin: 2rem 0 0;
+  fill: var(--ink);
+}
+
+.sheet-piece[data-treatment="screening"] .piece-header h2 {
+  max-width: 36rem;
+  font-size: clamp(2.2rem, 5vw, 3.6rem);
+}
+
+.sheet-piece[data-treatment="screening"] .briefing {
+  max-width: 48ch;
+  font-size: 16px;
+}
+
+.sheet-piece[data-composition="quote-led"] .pull-quote {
+  max-width: 42rem;
+  font-size: clamp(1.6rem, 3vw, 2.1rem);
+}
+
 .sheet-piece[data-treatment="feature"] .piece-header {
   max-width: 52rem;
 }
