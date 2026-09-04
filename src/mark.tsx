@@ -12,7 +12,7 @@ export function QuireMark({ className }: { className?: string }) {
       <span className="quire-mark-word">
         <span className="quire-mark-q">
           {initial}
-          <svg className="quire-mark-flourish" viewBox="0 0 100 40" aria-hidden>
+          <svg className="quire-mark-flourish" viewBox="0 0 100 40" aria-hidden="true">
             <path d={flourish} />
             <path className="quire-mark-fold" d={fold} />
           </svg>

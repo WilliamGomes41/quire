@@ -10,10 +10,12 @@ describe("Q v2 chrome mark", () => {
     expect(existsSync("src/assets/quire-q.svg")).toBe(false);
     const svg = readFileSync("src/assets/quire-flourish.svg", "utf8");
     expect(svg).toMatch(/viewBox="0 0 100 40"/);
+    expect(svg).toMatch(/aria-hidden="true"/);
     expect(svg).toContain(flourish);
     expect(svg).toContain(fold);
     expect(svg).toMatch(/fill="#1C1814"/);
     expect(svg).toMatch(/stroke="#FAF7F1"/);
+    expect(svg).toMatch(/stroke-width="1.5"/);
     expect(svg).not.toMatch(/superdesign|SaaS|lockup/i);
   });
 
@@ -25,6 +27,7 @@ describe("Q v2 chrome mark", () => {
     expect(mark).toContain(flourish);
     expect(mark).toContain(fold);
     expect(mark).toMatch(/className="quire-mark-flourish"/);
+    expect(mark).toMatch(/aria-hidden="true"/);
     expect(mark).toMatch(/className="quire-mark-stitch"/);
     expect(mark).not.toMatch(/M354 35Q406 35/);
     expect(css).toMatch(/\.quire-mark \{[\s\S]*font-family:\s*var\(--font-serif\)/);
@@ -53,8 +56,9 @@ describe("Q v2 chrome mark", () => {
     expect(home).toMatch(/className="site-masthead"/);
     expect(home).toMatch(/<QuireMark/);
     expect(keep).toMatch(/from "\.\.\/mark"/);
+    expect(press).toMatch(/className="press-shelf"/);
+    expect(press).toMatch(/<QuireMark/);
     expect(press).toMatch(/<h2>\{pressLabel\}<\/h2>/);
-    expect(press).not.toMatch(/QuireMark/);
     expect(chrome).toMatch(/<QuireMark/);
     expect(chrome).toMatch(/aria-label=\{productName\}/);
     expect(read).toMatch(/<p className="masthead">\{page\.cover\.masthead\}<\/p>/);
@@ -76,6 +80,8 @@ describe("Q v2 chrome mark", () => {
     expect(css).not.toMatch(/#f3eee4|#3d4a3a|#ffffff|#161513/i);
     expect(css).not.toMatch(/Playfair|Fraunces|Newsreader|Inter["']/);
     expect(css).toMatch(/\.site-masthead \{[\s\S]*font-size:\s*2\.2rem/);
+    expect(css).toMatch(/\.press-shelf \{[\s\S]*display:\s*flex/);
+    expect(css).toMatch(/\.press-shelf \{[\s\S]*justify-content:\s*space-between/);
     expect(css).toMatch(/\.masthead \{[\s\S]*font-size:\s*clamp\(3\.25rem,\s*9vw,\s*5rem\)/);
   });
 });

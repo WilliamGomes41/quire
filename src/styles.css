@@ -313,6 +313,25 @@ nav {
   border-bottom: 1px solid var(--binding);
 }
 
+.press-shelf {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 1.1rem;
+  padding-bottom: 0.55rem;
+  border-bottom: 1px solid var(--binding);
+}
+
+.press-shelf h2 {
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.press-shelf .quire-mark {
+  font-size: 1.7rem;
+}
+
 .cards {
   list-style: none;
   padding: 0;

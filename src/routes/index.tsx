@@ -239,7 +239,10 @@ function Home() {
       </div>
 
       <section className="board press">
-        <h2>{pressLabel}</h2>
+        <header className="press-shelf">
+          <QuireMark />
+          <h2>{pressLabel}</h2>
+        </header>
         {issues.length === 0 ? (
           <p className="empty">{pressEmpty}</p>
         ) : (
