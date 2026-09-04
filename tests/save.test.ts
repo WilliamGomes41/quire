@@ -337,6 +337,30 @@ describe("successful retrieval writes related_reporting", () => {
     });
     expect(rails[0]).not.toHaveProperty("related_reporting");
   });
+
+  it("does not send keep-host author tokens to search, and still keeps", async () => {
+    const queries: string[] = [];
+    const store = memoryStore();
+    const clip = await saveClip({ url: "https://williamgomes1.substack.com/p/harbour" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: ["William Gomes", "Praia"],
+      }),
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(store.rows.has(clip.id)).toBe(true);
+    expect(queries).toEqual(["A harbour vote Praia"]);
+    expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
+    expect(clip.relatedRail).toEqual({ status: "ok" });
+    expect(clip.relatedReporting).toEqual([
+      { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
+    ]);
+  });
 });
 
 describe("remove takes the clip off the pile", () => {

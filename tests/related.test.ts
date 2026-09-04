@@ -9,6 +9,7 @@ import {
   RELATED_REPORTING_MAX,
   buildSearchQuery,
   dedupeRelated,
+  dropZeroOverlap,
   normalizeRelated,
   rankRelated,
   relatedPersist,
@@ -155,5 +156,163 @@ describe("provider slot", () => {
       { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
     );
     expect(ranked[0]?.url).toBe("https://news.example/harbour");
+    expect(ranked.map((page) => page.url)).toContain("https://other.example/x");
+  });
+});
+
+describe("query hygiene: keep-host author tokens stay out", () => {
+  it("does not feed williamgomes from a Substack host and prefers topic", () => {
+    const query = buildSearchQuery({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      topic: {
+        contentType: "Comment",
+        topic: "Over intelligentie",
+        entities: ["William Gomes"],
+        date: "2026-09-01",
+      },
+    });
+    expect(query).toBe("Over intelligentie 2026-09-01");
+    expect(query.toLowerCase()).not.toMatch(/williamgomes/);
+    expect(query).not.toMatch(/William Gomes/);
+    expect(query).not.toMatch(/substack/i);
+    expect(query).not.toBe("https://williamgomes1.substack.com/p/over-intelligentie");
+  });
+
+  it("keeps remaining entities that are not the keep-host author", () => {
+    expect(
+      buildSearchQuery({
+        url: "https://williamgomes1.substack.com/p/harbour",
+        topic: {
+          contentType: "News",
+          topic: "A harbour vote",
+          entities: ["William Gomes", "Praia"],
+          date: "2026-09-01",
+        },
+      }),
+    ).toBe("A harbour vote Praia 2026-09-01");
+  });
+
+  it("falls back without stuffing the keep-host when topic is empty", () => {
+    const pathOnly = buildSearchQuery({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+    });
+    expect(pathOnly.toLowerCase()).toBe("over intelligentie");
+    expect(pathOnly.toLowerCase()).not.toMatch(/williamgomes/);
+    expect(pathOnly).not.toMatch(/williamgomes1\.substack/);
+
+    const hostOnly = buildSearchQuery({
+      url: "https://williamgomes1.substack.com/",
+    });
+    expect(hostOnly).toBe("");
+    expect(hostOnly.toLowerCase()).not.toMatch(/williamgomes/);
+  });
+
+  it("does not search the keep host when there is nothing on-topic to score", async () => {
+    const queries: string[] = [];
+    const empty = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return [{ url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" }];
+      },
+    });
+    expect(empty).toEqual({ status: "ok", related_reporting: [] });
+    expect(empty.status).not.toBe("failed");
+    expect(queries).toEqual([]);
+    expect(moreOnThisTopicCopy({ status: "ok", count: 0 }).kind).toBe("empty");
+  });
+});
+
+describe("zero-overlap pages drop after rank", () => {
+  it("drops pages with no token overlap and keeps the cap at five", async () => {
+    const overlapping = Array.from({ length: 6 }, (_, index) => ({
+      url: `https://news.example/harbour-${index}`,
+      title: `Harbour vote ${index}`,
+      snippet: "Praia harbour vote reporting",
+    }));
+    const junk = [
+      { url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" },
+      { url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" },
+    ];
+    const record = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: { contentType: "News", topic: "A harbour vote", entities: ["William Gomes", "Praia"] },
+      searchPages: async () => [...junk, ...overlapping],
+    });
+
+    expect(record.status).toBe("ok");
+    if (record.status !== "ok") return;
+    expect(record.related_reporting).toHaveLength(RELATED_REPORTING_MAX);
+    expect(RELATED_REPORTING_MAX).toBe(5);
+    expect(record.related_reporting.every((page) => /harbour/i.test(page.title ?? ""))).toBe(true);
+    expect(record.related_reporting.map((page) => page.url)).not.toContain(
+      "https://en.wikipedia.org/wiki/William_Gomes",
+    );
+    expect(record.related_reporting.map((page) => page.url)).not.toContain(
+      "https://www.dbnl.org/tekst/oltmans",
+    );
+  });
+
+  it("treats all-junk after filter as ok+0, not fail", async () => {
+    const empty = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      topic: { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] },
+      searchPages: async () => [
+        { url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" },
+        { url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" },
+      ],
+    });
+
+    expect(empty).toEqual({ status: "ok", related_reporting: [] });
+    expect(relatedPersist(empty).related_reporting).toEqual([]);
+    expect(empty.status).not.toBe("failed");
+
+    const emptyCopy = moreOnThisTopicCopy({ status: "ok", count: 0 });
+    expect(emptyCopy).toEqual({ kind: "empty", text: nothingMoreOnTopic });
+    expect(emptyCopy.text).not.toMatch(/could not look/i);
+
+    const ranked = rankRelated(
+      [
+        { url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" },
+        { url: "https://news.example/reading", title: "Over intelligentie" },
+      ],
+      { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] },
+    );
+    expect(ranked).toHaveLength(2);
+    expect(
+      dropZeroOverlap(ranked, { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] }, "https://williamgomes1.substack.com/p/note"),
+    ).toEqual([{ url: "https://news.example/reading", title: "Over intelligentie" }]);
+  });
+
+  it("still excludes the keep URL and strips tags", async () => {
+    const record = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/harbour",
+      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      searchPages: async () => [
+        { url: "https://williamgomes1.substack.com/p/harbour", title: "The keep" },
+        { url: "https://news.example/tagged", title: "<b>Harbour</b> vote", snippet: "A <em>Praia</em> note." },
+      ],
+    });
+    expect(record).toEqual({
+      status: "ok",
+      related_reporting: [
+        { url: "https://news.example/tagged", title: "Harbour vote", snippet: "A Praia note." },
+      ],
+    });
+  });
+});
+
+describe("related rail stays a search slot, not Grok web_search", () => {
+  it("does not add web_search or a /press path", async () => {
+    const { readFileSync, existsSync } = await import("node:fs");
+    const related = readFileSync("src/lib/related.ts", "utf8");
+    const understanding = readFileSync("src/lib/understanding.ts", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(related).not.toMatch(/web_search/);
+    expect(understanding).toMatch(/must not call web_search/);
+    expect(existsSync("src/routes/press.tsx")).toBe(false);
+    expect(css).toMatch(/--paper: #faf7f1;/);
+    expect(css).toMatch(/--ink: #1c1814;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
   });
 });
