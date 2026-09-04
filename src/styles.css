@@ -69,8 +69,59 @@ form {
   font-family: var(--font-serif);
   font-size: 1.7rem;
   font-weight: 600;
-  letter-spacing: -0.03em;
+  letter-spacing: -0.06em;
   line-height: 1;
+}
+
+.quire-mark {
+  position: relative;
+  display: inline-block;
+  padding-bottom: 0.22em;
+  font-family: var(--font-serif);
+  font-weight: 600;
+  letter-spacing: -0.06em;
+  line-height: 1;
+  color: var(--ink);
+}
+
+.quire-mark-word {
+  display: inline-flex;
+  align-items: baseline;
+}
+
+.quire-mark-q {
+  position: relative;
+  display: inline-block;
+}
+
+.quire-mark-flourish {
+  position: absolute;
+  bottom: -4%;
+  left: 24%;
+  width: 58%;
+  height: 32%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.quire-mark-flourish path:first-child {
+  fill: currentColor;
+}
+
+.quire-mark-fold {
+  fill: none;
+  stroke: var(--paper);
+  stroke-width: 1.5;
+}
+
+.quire-mark-stitch {
+  position: absolute;
+  left: 8%;
+  bottom: 0;
+  width: 1em;
+  height: 2px;
+  background: var(--binding);
+  opacity: 0.95;
 }
 
 form.keep {
@@ -531,6 +582,19 @@ body:has(.stage) {
 .stage-chrome a {
   color: color-mix(in srgb, var(--paper) 88%, var(--binding));
   text-decoration: none;
+}
+
+.stage-chrome .quire-mark {
+  font-size: 1.35rem;
+  color: inherit;
+}
+
+.stage .quire-mark-fold {
+  stroke: color-mix(in srgb, var(--binding) 88%, var(--ink));
+}
+
+.stage .quire-mark-stitch {
+  background: color-mix(in srgb, var(--paper) 55%, var(--binding));
 }
 
 .stage-tools {

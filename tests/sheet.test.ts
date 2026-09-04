@@ -78,7 +78,8 @@ describe("bound magazine sheet", () => {
 
   it("keeps primary navigation inside Quire", () => {
     const read = readFileSync("src/routes/read.$id.tsx", "utf8");
-    expect(read).toMatch(/<Link to="\/">\{productName\}<\/Link>/);
+    expect(read).toMatch(/<Link to="\/" aria-label=\{productName\}>/);
+    expect(read).toMatch(/<QuireMark/);
     expect(read).not.toMatch(/target="_blank"/);
     expect(read).not.toMatch(/href=\{[^}]*url/);
     expect(read).not.toMatch(/window\.open/);
@@ -120,7 +121,8 @@ describe("bound magazine sheet", () => {
   it("keeps app chrome on the stage, not on the paper", () => {
     const read = readFileSync("src/routes/read.$id.tsx", "utf8");
     expect(read).toMatch(/<nav className="stage-chrome">/);
-    expect(read).toMatch(/<Link to="\/">\{productName\}<\/Link>/);
+    expect(read).toMatch(/<Link to="\/" aria-label=\{productName\}>/);
+    expect(read).toMatch(/<QuireMark/);
     expect(read.indexOf("stage-chrome")).toBeLessThan(read.indexOf("stage-well"));
     expect(read).not.toMatch(/<nav className="issue-nav">/);
     expect(read).not.toMatch(/className="sheet[^"]*"[^>]*>[\s\S]*stage-chrome/);

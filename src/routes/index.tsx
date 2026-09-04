@@ -15,7 +15,6 @@ import {
   pressCoverMeta,
   pressEmpty,
   pressLabel,
-  productName,
   removeIssueAsk,
   removeLabel,
   removePiecesTooLabel,
@@ -47,6 +46,7 @@ import {
 } from "../lib/store";
 import { resolveSearchPages } from "../lib/search";
 import { runGrokUnderstanding } from "../lib/understanding";
+import { QuireMark } from "../mark";
 
 const loadHome = createServerFn({ method: "GET" }).handler(async () => {
   const [clips, issues] = await Promise.all([listClips(), listIssues()]);
@@ -131,7 +131,9 @@ function Home() {
     <main>
       <header className="site">
         <nav>
-          <strong className="site-masthead">{productName}</strong>
+          <strong className="site-masthead">
+            <QuireMark />
+          </strong>
           <Link to="/login">Owner sign in</Link>
         </nav>
       </header>
