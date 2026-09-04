@@ -1,5 +1,6 @@
 import { couldNotUnderstand } from "../copy";
 import { grokModel, xaiChatUrl } from "./model";
+import { serverEnv } from "./server-env";
 
 export const contentTypes = ["News", "Comment", "Study", "Notice"] as const;
 export type ContentType = (typeof contentTypes)[number];
@@ -122,7 +123,7 @@ export async function runGrokUnderstanding(
   input: { url: string },
   deps?: { apiKey?: string; post?: GrokPost },
 ): Promise<Understanding> {
-  const apiKey = deps?.apiKey ?? process.env.XAI_API_KEY;
+  const apiKey = deps?.apiKey ?? serverEnv("XAI_API_KEY");
   if (!apiKey) {
     throw new Error("XAI_API_KEY is not set");
   }

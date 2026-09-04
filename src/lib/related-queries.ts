@@ -4,6 +4,7 @@
  */
 
 import { grokModel, xaiChatUrl } from "./model";
+import { serverEnv } from "./server-env";
 import type { Understanding } from "./understanding";
 
 export type RelatedSearchStrings = {
@@ -101,7 +102,7 @@ export async function runGrokRelatedQueries(
   topic: Understanding,
   deps?: { apiKey?: string; post?: GrokPost },
 ): Promise<RelatedSearchStrings> {
-  const apiKey = deps?.apiKey ?? process.env.XAI_API_KEY;
+  const apiKey = deps?.apiKey ?? serverEnv("XAI_API_KEY");
   if (!apiKey) {
     throw new Error("XAI_API_KEY is not set");
   }

@@ -4,6 +4,8 @@
  * Not a class per vendor. PROTOCOL §4 / §10.
  */
 
+import { serverEnv } from "./server-env";
+
 export type RawPage = {
   url: string;
   title?: string;
@@ -105,7 +107,7 @@ function readPages(payload: unknown): RawPage[] {
 /** Day-one dedicated search API. Finds pages (raw). The app ranks. */
 export function pagesFromSearchApi(config: SearchSlotConfig = {}): SearchPages {
   return async ({ query }) => {
-    const apiKey = config.apiKey ?? process.env.SEARCH_API_KEY ?? process.env.BRAVE_SEARCH_API_KEY;
+    const apiKey = config.apiKey ?? serverEnv("SEARCH_API_KEY") ?? serverEnv("BRAVE_SEARCH_API_KEY");
     if (!apiKey) {
       throw searchLookupError("unconfigured", "SEARCH_API_KEY is not set");
     }
@@ -114,7 +116,7 @@ export function pagesFromSearchApi(config: SearchSlotConfig = {}): SearchPages {
       throw searchLookupError("failed", "Search query is empty.");
     }
 
-    const endpoint = new URL(config.apiUrl ?? process.env.SEARCH_API_URL ?? defaultSearchApiUrl);
+    const endpoint = new URL(config.apiUrl ?? serverEnv("SEARCH_API_URL") ?? defaultSearchApiUrl);
     endpoint.searchParams.set("q", q);
     endpoint.searchParams.set("count", String(searchRawLimit));
 
@@ -154,7 +156,7 @@ export const searchApis: Record<string, (config?: SearchSlotConfig) => SearchPag
 };
 
 export function resolveSearchPages(config: SearchSlotConfig = {}): SearchPages {
-  const id = config.api ?? process.env.SEARCH_PROVIDER ?? "search_api";
+  const id = config.api ?? serverEnv("SEARCH_PROVIDER") ?? "search_api";
   const factory = searchApis[id];
   if (!factory) {
     return async () => {
