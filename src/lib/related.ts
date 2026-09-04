@@ -1,5 +1,9 @@
 import { couldNotLook } from "../copy";
 import { plainText } from "./article";
+import {
+  relatedQueryMax,
+  type RelatedSearchStringsFn,
+} from "./related-queries";
 import { searchFailStatus, type SearchPages } from "./search";
 import type { Understanding } from "./understanding";
 
@@ -199,6 +203,57 @@ export function buildSearchQuery(input: { url: string; topic?: Understanding | n
   return compact([...entities, pathFallback(input.url, junk), date].filter(Boolean).join(" "), 320);
 }
 
+function hygienicTopic(topic: Understanding, keepUrl: string): Understanding {
+  const junk = hostAuthorTokens(keepUrl);
+  const date = compact(topic.date, 10);
+  return {
+    contentType: topic.contentType,
+    topic: stripHostAuthor(topic.topic, junk, 180),
+    entities: remainingEntities(topic, junk),
+    ...(date ? { date } : {}),
+  };
+}
+
+function looksLikeUrlPick(value: string) {
+  return /https?:\/\//i.test(value) || /^\s*www\./i.test(value);
+}
+
+/** Host-author tokens stay out. URL picks are not search strings. */
+function cleanSearchString(value: string, keepUrl: string) {
+  const cleaned = stripHostAuthor(value, hostAuthorTokens(keepUrl), relatedQueryMax);
+  if (!cleaned || looksLikeUrlPick(cleaned)) return "";
+  return cleaned;
+}
+
+/**
+ * Grok comparable + contrarian when both strings survive hygiene.
+ * Fail-closed for that step: missing strings fall back to the topic query.
+ * Search still runs. Empty vs fail stay distinct.
+ */
+export async function relatedSearchQueries(input: {
+  url: string;
+  topic?: Understanding | null;
+  searchStrings?: RelatedSearchStringsFn;
+}): Promise<string[]> {
+  const fallback = buildSearchQuery({ url: input.url, topic: input.topic });
+  if (input.searchStrings && input.topic) {
+    const cleaned = hygienicTopic(input.topic, input.url);
+    if (cleaned.topic) {
+      try {
+        const pair = await input.searchStrings(cleaned);
+        const comparable = cleanSearchString(pair?.comparable ?? "", input.url);
+        const contrarian = cleanSearchString(pair?.contrarian ?? "", input.url);
+        if (comparable && contrarian) {
+          return comparable === contrarian ? [comparable] : [comparable, contrarian];
+        }
+      } catch {
+        // Fail-closed for the Grok-string step. Topic query still runs.
+      }
+    }
+  }
+  return fallback ? [fallback] : [];
+}
+
 export function normalizeRelated(
   raw: { url?: string; title?: string; snippet?: string; date?: string }[],
   keepUrl: string,
@@ -320,14 +375,21 @@ export async function runRelatedReporting(input: {
   url: string;
   topic?: Understanding | null;
   searchPages: SearchPages;
+  searchStrings?: RelatedSearchStringsFn;
 }): Promise<RelatedRailRecord> {
-  const query = buildSearchQuery({ url: input.url, topic: input.topic });
-  if (!query) {
+  const queries = await relatedSearchQueries({
+    url: input.url,
+    topic: input.topic,
+    searchStrings: input.searchStrings,
+  });
+  if (!queries.length) {
     return { status: "ok", related_reporting: [] };
   }
-  let raw;
+  const raw: { url?: string; title?: string; snippet?: string; date?: string }[] = [];
   try {
-    raw = await input.searchPages({ query });
+    for (const query of queries) {
+      raw.push(...(await input.searchPages({ query })));
+    }
   } catch (error) {
     return relatedFail(error);
   }

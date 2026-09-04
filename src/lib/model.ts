@@ -1,4 +1,4 @@
-/** Pinned xAI model. Keep understanding and optional take after Select. */
+/** Pinned xAI model. Keep understanding, related search strings, and optional take after Select. */
 
 export const grokModel = process.env.XAI_MODEL ?? "grok-4.6";
 
