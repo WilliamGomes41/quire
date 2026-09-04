@@ -88,8 +88,9 @@ describe("Keep / Select press board", () => {
     expect(keep).toMatch(/aria-label="URL"/);
     expect(keep).not.toMatch(/<label htmlFor="url">/);
     expect(keep).not.toMatch(/>URL</);
+    expect(keep).not.toMatch(/Keep Piece|Keep a URL|Paste link here/i);
     expect(css).toMatch(/form\.keep \{[\s\S]*display:\s*flex/);
-    expect(css).toMatch(/form\.keep \{[\s\S]*max-width:\s*28rem/);
+    expect(css).toMatch(/\.keep-rail form\.keep \{[\s\S]*flex-direction:\s*column/);
   });
 
   it("uses a modest Source Serif site masthead, smaller than the Read cover", () => {

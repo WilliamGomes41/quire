@@ -134,102 +134,107 @@ function Home() {
           <strong className="site-masthead">{productName}</strong>
           <Link to="/login">Owner sign in</Link>
         </nav>
-        <form
-          className="keep"
-          onSubmit={(event) => {
-            event.preventDefault();
-            if (keeping) return;
-            const form = event.currentTarget;
-            const url = String(new FormData(form).get("url") ?? "");
-            setKeeping(true);
-            keepUrl({ data: { url } })
-              .then(() => {
-                form.reset();
-                return router.invalidate();
-              })
-              .finally(() => setKeeping(false));
-          }}
-        >
-          <input
-            id="url"
-            name="url"
-            type="url"
-            required
-            placeholder="https://"
-            aria-label="URL"
-            disabled={keeping}
-          />
-          <button type="submit" disabled={keeping} aria-busy={keeping}>
-            {keeping ? "Keeping…" : "Keep"}
-          </button>
-        </form>
       </header>
 
-      <section className="board">
-        {clips.length === 0 ? (
-          <p className="empty">{emptyState}</p>
-        ) : (
-          <>
-            <ul className="cards">
-              {clips.map((clip: Clip) => (
-                <li key={clip.id}>
-                  <BindCard
-                    clip={clip}
-                    choice={choices[clip.id] ?? defaultBindChoice()}
-                    onChoice={(choice) => setChoice(clip.id, choice)}
-                    onRemove={() =>
-                      removeKept({ data: { id: clip.id } }).then(() => router.invalidate())
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              disabled={binding}
-              aria-busy={binding}
-              onClick={() => {
-                if (binding) return;
-                const selected = chosenFromBoard(board);
-                if (selected.length === 0) {
-                  setBindError(nothingSelected);
-                  return;
-                }
-                setBindError("");
-                setBinding(true);
-                bindIssue({
-                  data: {
-                    selections: board
-                      .filter(({ clip, choice }) => chosenPieces(clip, choice).length > 0)
-                      .map(({ clip, choice }) => ({
-                        clipId: clip.id,
-                        includeOriginal: choice.includeOriginal,
-                        relatedUrls: choice.relatedUrls,
-                      })),
-                  },
+      <div className="desk">
+        <aside className="keep-rail">
+          <form
+            className="keep"
+            onSubmit={(event) => {
+              event.preventDefault();
+              if (keeping) return;
+              const form = event.currentTarget;
+              const url = String(new FormData(form).get("url") ?? "");
+              setKeeping(true);
+              keepUrl({ data: { url } })
+                .then(() => {
+                  form.reset();
+                  return router.invalidate();
                 })
-                  .then(
-                    (result) =>
-                      router.invalidate().then(() =>
-                        router.navigate({ to: "/read/$id", params: { id: result.id } }),
-                      ),
-                    (cause: unknown) => {
-                      setBindError(cause instanceof Error ? cause.message : "Could not bind this issue.");
-                    },
-                  )
-                  .finally(() => setBinding(false));
-              }}
-            >
-              {binding ? "Creating…" : createIssueLabel}
+                .finally(() => setKeeping(false));
+            }}
+          >
+            <input
+              id="url"
+              name="url"
+              type="url"
+              required
+              placeholder="https://"
+              aria-label="URL"
+              disabled={keeping}
+            />
+            <button type="submit" disabled={keeping} aria-busy={keeping}>
+              {keeping ? "Keeping…" : "Keep"}
             </button>
-            {bindError ? (
-              <p className="fail" role="alert">
-                {bindError}
-              </p>
-            ) : null}
-          </>
-        )}
-      </section>
+          </form>
+        </aside>
+
+        <section className="board">
+          {clips.length === 0 ? (
+            <p className="empty">{emptyState}</p>
+          ) : (
+            <>
+              <ul className="cards">
+                {clips.map((clip: Clip) => (
+                  <li key={clip.id}>
+                    <BindCard
+                      clip={clip}
+                      choice={choices[clip.id] ?? defaultBindChoice()}
+                      onChoice={(choice) => setChoice(clip.id, choice)}
+                      onRemove={() =>
+                        removeKept({ data: { id: clip.id } }).then(() => router.invalidate())
+                      }
+                    />
+                  </li>
+                ))}
+              </ul>
+              <button
+                type="button"
+                disabled={binding}
+                aria-busy={binding}
+                onClick={() => {
+                  if (binding) return;
+                  const selected = chosenFromBoard(board);
+                  if (selected.length === 0) {
+                    setBindError(nothingSelected);
+                    return;
+                  }
+                  setBindError("");
+                  setBinding(true);
+                  bindIssue({
+                    data: {
+                      selections: board
+                        .filter(({ clip, choice }) => chosenPieces(clip, choice).length > 0)
+                        .map(({ clip, choice }) => ({
+                          clipId: clip.id,
+                          includeOriginal: choice.includeOriginal,
+                          relatedUrls: choice.relatedUrls,
+                        })),
+                    },
+                  })
+                    .then(
+                      (result) =>
+                        router.invalidate().then(() =>
+                          router.navigate({ to: "/read/$id", params: { id: result.id } }),
+                        ),
+                      (cause: unknown) => {
+                        setBindError(cause instanceof Error ? cause.message : "Could not bind this issue.");
+                      },
+                    )
+                    .finally(() => setBinding(false));
+                }}
+              >
+                {binding ? "Creating…" : createIssueLabel}
+              </button>
+              {bindError ? (
+                <p className="fail" role="alert">
+                  {bindError}
+                </p>
+              ) : null}
+            </>
+          )}
+        </section>
+      </div>
 
       <section className="board press">
         <h2>{pressLabel}</h2>
@@ -335,7 +340,7 @@ function BindCard({
       : [date].filter(Boolean);
 
   return (
-    <article className={choice.includeOriginal ? "card in" : "card"}>
+    <article className={[choice.includeOriginal ? "card in" : "card", figure ? "photo" : ""].filter(Boolean).join(" ")}>
       {figure ? (
         <span className="figure">
           <img src={figure} alt="" />
