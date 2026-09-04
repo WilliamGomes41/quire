@@ -19,6 +19,7 @@ import { qrMatrix } from "../lib/qr";
 import { composeBoundPrint } from "../lib/print-bound";
 import { offerPrint, paperNameFor } from "../lib/print";
 import { clipStore, issueStore } from "../lib/store";
+import { QuireMark } from "../mark";
 
 const TURN_MS = 280;
 
@@ -67,7 +68,9 @@ function ReadIssue() {
     return (
       <main className="stage">
         <nav className="stage-chrome">
-          <Link to="/">{productName}</Link>
+          <Link to="/" aria-label={productName}>
+            <QuireMark />
+          </Link>
         </nav>
         <p className="stage-empty">{payload?.fail ?? "That issue is not here."}</p>
       </main>
@@ -133,7 +136,9 @@ function ReadIssue() {
   return (
     <main className="stage">
       <nav className="stage-chrome">
-        <Link to="/">{productName}</Link>
+        <Link to="/" aria-label={productName}>
+          <QuireMark />
+        </Link>
         <div className="stage-tools">
           <div className="stage-turn">
             <button
