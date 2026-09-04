@@ -67,7 +67,7 @@ form {
 
 .site-masthead {
   font-family: var(--font-serif);
-  font-size: 1.7rem;
+  font-size: 2.2rem;
   font-weight: 600;
   letter-spacing: -0.06em;
   line-height: 1;
@@ -76,7 +76,8 @@ form {
 .quire-mark {
   position: relative;
   display: inline-block;
-  padding-bottom: 0.22em;
+  overflow: visible;
+  padding-bottom: 0.28em;
   font-family: var(--font-serif);
   font-weight: 600;
   letter-spacing: -0.06em;
@@ -85,41 +86,34 @@ form {
 }
 
 .quire-mark-word {
-  display: inline-flex;
-  align-items: baseline;
+  white-space: nowrap;
 }
 
 .quire-mark-q {
-  position: relative;
   display: inline-block;
-}
-
-.quire-mark-flourish {
-  position: absolute;
-  bottom: -4%;
-  left: 24%;
-  width: 58%;
-  height: 32%;
+  height: 1.371em;
+  width: auto;
   overflow: visible;
-  pointer-events: none;
+  margin-right: -0.06em;
+  vertical-align: -0.335em;
 }
 
-.quire-mark-flourish path:first-child {
+.quire-mark-q path:not(.quire-mark-fold) {
   fill: currentColor;
 }
 
 .quire-mark-fold {
   fill: none;
   stroke: var(--paper);
-  stroke-width: 1.5;
+  stroke-width: 1.8;
 }
 
 .quire-mark-stitch {
   position: absolute;
   left: 8%;
   bottom: 0;
-  width: 1em;
-  height: 2px;
+  width: 1.15em;
+  height: 3px;
   background: var(--binding);
   opacity: 0.95;
 }
@@ -585,7 +579,7 @@ body:has(.stage) {
 }
 
 .stage-chrome .quire-mark {
-  font-size: 1.35rem;
+  font-size: 1.7rem;
   color: inherit;
 }
 

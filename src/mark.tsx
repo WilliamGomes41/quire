@@ -1,22 +1,29 @@
 import { productName } from "./copy";
 
+const qLetter =
+  "M354 35Q406 35 443.5 60.5Q481 86 504.5 128.5Q528 171 539.0 224.5Q550 278 550 335Q550 391 539.0 444.5Q528 498 504.5 541.0Q481 584 443.5 609.5Q406 635 354 635Q302 635 264.5 609.5Q227 584 203.0 541.0Q179 498 167.5 444.5Q156 391 156 335Q156 278 167.5 224.5Q179 171 203.0 128.5Q227 86 264.5 60.5Q302 35 354 35ZM500 -216Q437 -216 392.5 -187.0Q348 -158 325.0 -111.0Q302 -64 302 -10Q234 2 176.0 45.0Q118 88 82.5 160.5Q47 233 47 335Q47 417 73.0 482.0Q99 547 142.5 592.0Q186 637 241.0 661.0Q296 685 354 685Q412 685 466.5 662.5Q521 640 564.5 595.5Q608 551 634.0 486.0Q660 421 660 335Q660 235 623.0 161.0Q586 87 526.0 43.0Q466 -1 396 -12Q398 -83 435.0 -121.5Q472 -160 534 -160Q549 -160 568.5 -157.5Q588 -155 612 -148L623 -184Q598 -200 564.5 -208.0Q531 -216 500 -216Z";
 const flourish = "M10 5 C 30 5, 45 15, 85 5 L 88 12 C 55 25, 35 15, 10 32 Z";
 const fold = "M85 5 L 78 8";
 
 export function QuireMark({ className }: { className?: string }) {
-  const initial = productName.slice(0, 1);
   const rest = productName.slice(1);
 
   return (
-    <span className={["quire-mark", className].filter(Boolean).join(" ")}>
-      <span className="quire-mark-word">
-        <span className="quire-mark-q">
-          {initial}
-          <svg className="quire-mark-flourish" viewBox="0 0 100 40" aria-hidden>
+    <span
+      className={["quire-mark", className].filter(Boolean).join(" ")}
+      role="img"
+      aria-label={productName}
+    >
+      <span className="quire-mark-word" aria-hidden>
+        <svg className="quire-mark-q" viewBox="0 0 707 1371">
+          <g transform="translate(0 1036) scale(1 -1)">
+            <path d={qLetter} />
+          </g>
+          <svg x="255" y="980" width="455" height="320" viewBox="0 0 100 40" overflow="visible">
             <path d={flourish} />
             <path className="quire-mark-fold" d={fold} />
           </svg>
-        </span>
+        </svg>
         {rest}
       </span>
       <span className="quire-mark-stitch" aria-hidden />
