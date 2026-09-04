@@ -23,10 +23,12 @@ describe("Q v2 chrome mark", () => {
     const mark = readFileSync("src/mark.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
     expect(mark).toMatch(/productName\.slice\(0, 1\)/);
-    expect(mark).toMatch(/productName\.slice\(1\)/);
+    expect(mark).toMatch(/productName\.slice\(1, 3\)/);
+    expect(mark).toMatch(/productName\.slice\(3\)/);
     expect(mark).toContain(flourish);
     expect(mark).toContain(fold);
     expect(mark).toMatch(/className="quire-mark-flourish"/);
+    expect(mark).toMatch(/className="quire-mark-qui"/);
     expect(mark).toMatch(/aria-hidden="true"/);
     expect(mark).toMatch(/className="quire-mark-stitch"/);
     expect(mark).not.toMatch(/M354 35Q406 35/);
@@ -39,7 +41,7 @@ describe("Q v2 chrome mark", () => {
     expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*width:\s*58%/);
     expect(css).toMatch(/\.quire-mark-flourish \{[\s\S]*height:\s*32%/);
     expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*left:\s*8%/);
-    expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*width:\s*1\.45em/);
+    expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*width:\s*1em/);
     expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*height:\s*0\.036em/);
     expect(css).toMatch(/\.quire-mark-stitch \{[\s\S]*background:\s*var\(--binding\)/);
     expect(css).toMatch(/\.quire-mark-fold \{[\s\S]*stroke:\s*var\(--paper\)/);

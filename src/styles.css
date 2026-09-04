@@ -77,17 +77,22 @@ form {
   position: relative;
   display: inline-block;
   overflow: visible;
-  padding-bottom: 0.28em;
+  padding-bottom: 0.093em;
   font-family: var(--font-serif);
   font-weight: 600;
   letter-spacing: -0.06em;
   line-height: 1;
   color: var(--ink);
+  -webkit-font-smoothing: antialiased;
 }
 
 .quire-mark-word {
   display: inline-flex;
   align-items: baseline;
+}
+
+.quire-mark-qui {
+  position: relative;
 }
 
 .quire-mark-q {
@@ -104,6 +109,7 @@ form {
   height: 32%;
   overflow: visible;
   pointer-events: none;
+  z-index: 1;
 }
 
 .quire-mark-flourish path:first-child {
@@ -120,7 +126,7 @@ form {
   position: absolute;
   left: 8%;
   bottom: 0;
-  width: 1.45em;
+  width: 1em;
   height: 0.036em;
   background: var(--binding);
   opacity: 0.95;
