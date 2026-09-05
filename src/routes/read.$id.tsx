@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { couldNotFetchWords, couldNotPrint, printThisIssue, productName } from "../copy";
+import { couldNotFetchWords, couldNotPrint, printThisIssue, productName, stanceCopy } from "../copy";
 import { issueFromKeptWords } from "../lib/bind";
 import { fetchArticleWords } from "../lib/article";
 import type { BodyBlock } from "../lib/article";
@@ -207,7 +207,14 @@ function ReadIssue() {
                   ) : (
                     <li key={row.folio}>
                       <button type="button" className="toc-row" onClick={() => goTo(pieceSheetIndex(rowIndex))}>
-                        <p className="toc-title">{row.title}</p>
+                        <span className="toc-copy">
+                          {row.stance ? (
+                            <span className={row.stance === "inconclusive" ? "toc-stance quiet" : "toc-stance"}>
+                              {stanceCopy(row.stance)}
+                            </span>
+                          ) : null}
+                          <p className="toc-title">{row.title}</p>
+                        </span>
                         <span className="toc-dots" aria-hidden />
                         <span className="folio">{row.folio}</span>
                       </button>

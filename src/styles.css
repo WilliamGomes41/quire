@@ -844,6 +844,26 @@ button.toc-row:hover {
   box-shadow: none;
 }
 
+.toc-copy {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.3rem 0.85rem;
+  min-width: 0;
+}
+
+.toc-stance {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 0.82rem;
+  line-height: 1.2;
+  color: var(--muted);
+}
+
+.toc-stance.quiet {
+  color: color-mix(in srgb, var(--ink) 42%, var(--paper));
+}
+
 .toc-title {
   margin: 0;
   font-family: var(--font-serif);

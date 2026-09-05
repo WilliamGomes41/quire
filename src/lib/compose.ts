@@ -9,6 +9,7 @@ import type { BodyBlock, FigureKind } from "./article";
 import type { BoundIssue, BoundPiece } from "./bind";
 import { leadPiece } from "./bind";
 import { designIntent, figureFitFor, type DesignIntent } from "./design";
+import { isRelatedStance, type RelatedStance } from "./related";
 import { slotState } from "./related-stance";
 import { takeText } from "./take";
 
@@ -46,6 +47,7 @@ export type ContentsRow = {
   title: string;
   folio: string;
   absent?: boolean;
+  stance?: RelatedStance;
 };
 
 export type PagePlan = {
@@ -238,7 +240,15 @@ export function sourceOwnedCoverLine(issue: BoundIssue): string | undefined {
 }
 
 function contentsRows(pieces: BoundPiece[], sequence: SequenceSheet[]): ContentsRow[] {
-  const rows: ContentsRow[] = sequence.map((sheet) => ({ title: sheet.headline, folio: sheet.folio }));
+  const rows: ContentsRow[] = sequence.map((sheet, index) => {
+    const piece = pieces[index];
+    const stance = piece?.role === "related" && isRelatedStance(piece.stance) ? piece.stance : undefined;
+    return {
+      title: sheet.headline,
+      folio: sheet.folio,
+      ...(stance ? { stance } : {}),
+    };
+  });
   const related = pieces.filter((piece) => piece.role === "related");
   if (related.length === 0) return rows;
   if (slotState(related, "comparable") === "absent") {
