@@ -56,7 +56,7 @@ describe("Keep is not bind", () => {
     const { readFileSync } = await import("node:fs");
     const save = readFileSync("src/lib/save.ts", "utf8");
     expect(save).toMatch(/persistSourceHeadline/);
-    expect(save).toMatch(/runSourceHeadline/);
+    expect(save).toMatch(/runKeepSource/);
     expect(save).not.toMatch(/web_search/);
   });
 });
@@ -152,6 +152,55 @@ describe("Keep always saves", () => {
     });
   });
 
+  it("passes claim source into understanding and does not search without a claim", async () => {
+    const store = memoryStore();
+    let seen: { url: string; source?: { headline?: string; body?: string } } | undefined;
+    const grounded = await saveClip({ url: "https://example.com/source" }, store, {
+      readSource: async () => ({
+        found: { text: "The harbour vote", snippet: "The assembly met at dusk in Praia." },
+        source: {
+          headline: "The harbour vote",
+          snippet: "The assembly met at dusk in Praia.",
+          body: "The assembly met at dusk in Praia. The motion should carry after a quiet count along the quay.",
+        },
+      }),
+      understand: async (input) => {
+        seen = input;
+        return {
+          contentType: "News",
+          topic: "A harbour vote",
+          entities: ["Praia"],
+          centralClaim: "The harbour vote should carry",
+        };
+      },
+      searchPages: quietSearch,
+    });
+    expect(seen?.source?.headline).toBe("The harbour vote");
+    expect(seen?.source?.body).toMatch(/motion should carry/);
+    expect(grounded.relatedRail).toEqual({ status: "ok" });
+
+    const queries: string[] = [];
+    const limited = await saveClip({ url: "https://example.com/no-claim" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "Comment",
+        topic: "Intelligence",
+        entities: ["Bubista", "William Gomes"],
+      }),
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return Array.from({ length: 5 }, (_, index) => ({
+          url: `https://sport.example/bubista-${index}`,
+          title: `Bubista scores again ${index}`,
+        }));
+      },
+    });
+    expect(store.rows.has(limited.id)).toBe(true);
+    expect(queries).toEqual([]);
+    expect(limited.relatedRail).toEqual({ status: "ok" });
+    expect(limited.relatedReporting).toEqual([]);
+  });
+
   it("still keeps when default Grok understanding cannot run", async () => {
     const store = await clipStore();
     const clip = await saveClip({ url: "https://example.com/no-key" }, store, {
@@ -222,6 +271,7 @@ describe("Keep still persists when search throws", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => {
         throw new Error("search down");
@@ -247,6 +297,7 @@ describe("Keep still persists when search throws", () => {
         contentType: "Comment",
         topic: "A column on reading",
         entities: [],
+        centralClaim: "Reading stays a quiet craft",
       }),
       searchPages: async () => {
         throw new Error("search down");
@@ -269,6 +320,7 @@ describe("Keep still persists when search throws", () => {
         contentType: "Study",
         topic: "A paper",
         entities: [],
+        centralClaim: "The paper binds the count",
       }),
       searchPages: async () => {
         throw new Error("search down");
@@ -291,6 +343,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => [
         { url: "https://news.example/one", title: "Harbour vote in Praia" },
@@ -330,6 +383,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: [],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => {
         throw Object.assign(new Error("provider down"), { status: "failed" });
@@ -347,6 +401,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["William Gomes", "Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async ({ query }) => {
         queries.push(query);
@@ -354,7 +409,7 @@ describe("successful retrieval writes related_reporting", () => {
       },
     });
     expect(store.rows.has(clip.id)).toBe(true);
-    expect(queries).toEqual(["A harbour vote Praia"]);
+    expect(queries).toEqual(["The harbour vote should carry Praia"]);
     expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
     expect(clip.relatedRail).toEqual({ status: "ok" });
     expect(clip.relatedReporting).toEqual([
@@ -370,6 +425,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => [
         { url: "https://en.wikipedia.org/wiki/Harbour", title: "Harbour vote in Praia" },
@@ -392,6 +448,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchStrings: async () => ({
         comparable: "harbour vote Praia reporting",
@@ -416,6 +473,7 @@ describe("successful retrieval writes related_reporting", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchStrings: async () => {
         throw new Error("Grok strings down");
@@ -426,7 +484,7 @@ describe("successful retrieval writes related_reporting", () => {
       },
     });
     expect(store.rows.has(fallback.id)).toBe(true);
-    expect(fallbackQueries).toEqual(["A harbour vote Praia"]);
+    expect(fallbackQueries).toEqual(["The harbour vote should carry Praia"]);
     expect(fallback.relatedRail).toEqual({ status: "ok" });
     expect(fallback.relatedReporting).toEqual([
       { url: "https://news.example/harbour", title: "Harbour vote in Praia" },

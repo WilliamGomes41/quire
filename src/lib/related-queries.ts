@@ -27,10 +27,11 @@ export const relatedQueryJsonSchema = {
 };
 
 export const relatedQuerySystemPrompt = [
-  "Structure two short search strings from this topic.",
+  "Structure two short search strings from the central claim.",
   "Return only comparable and contrarian.",
-  "Comparable is other reporting on the same topic.",
-  "Contrarian is a contrasting or opposing angle on the same topic.",
+  "Comparable is other reporting on the same claim.",
+  "Contrarian is a contrasting or opposing angle on the same claim.",
+  "The central claim is primary. Entities are context only.",
   "Each string is a short web search query, not a URL.",
   "You only structure two short search strings.",
   "You must not search the web.",
@@ -67,6 +68,8 @@ export function parseRelatedSearchStrings(value: unknown): RelatedSearchStrings 
 export function relatedQueryUserContent(topic: Understanding) {
   return [
     `contentType: ${topic.contentType}`,
+    `centralClaim: ${topic.centralClaim?.trim() || "(none)"}`,
+    `supportingClaims: ${topic.supportingClaims?.length ? topic.supportingClaims.join(" | ") : "(none)"}`,
     `topic: ${topic.topic}`,
     `entities: ${topic.entities.length ? topic.entities.join(", ") : "(none)"}`,
     topic.date ? `date: ${topic.date}` : "",

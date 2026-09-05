@@ -6,17 +6,27 @@ import {
   nothingMoreOnTopic,
 } from "../src/copy";
 import {
+  RELATED_PRESELECT_MAX,
   RELATED_REPORTING_MAX,
+  SEARCH_RAW_MAX,
   buildSearchQuery,
   dedupeRelated,
   dropZeroOverlap,
   normalizeRelated,
+  preselectClaimRelated,
   rankRelated,
   relatedPersist,
   relatedSearchQueries,
   runRelatedReporting,
 } from "../src/lib/related";
 import { pagesFromSearchApi, resolveSearchPages, searchApis } from "../src/lib/search";
+
+const harbourTopic = {
+  contentType: "News" as const,
+  topic: "A harbour vote",
+  entities: ["Praia"],
+  centralClaim: "The harbour vote should carry",
+};
 
 describe("related_reporting max five", () => {
   it("persists at most five ranked pages after normalize and dedupe", async () => {
@@ -27,7 +37,7 @@ describe("related_reporting max five", () => {
     }));
     const record = await runRelatedReporting({
       url: "https://example.com/kept",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      topic: harbourTopic,
       searchPages: async () => raw,
     });
 
@@ -43,7 +53,7 @@ describe("ok+0 empty copy vs system-fail copy", () => {
   it("uses the empty-topic sentence only for successful retrieval with zero pages", async () => {
     const empty = await runRelatedReporting({
       url: "https://example.com/kept",
-      topic: { contentType: "Notice", topic: "A harbour closure", entities: [] },
+      topic: { contentType: "Notice", topic: "A harbour closure", entities: [], centralClaim: "The harbour is closed" },
       searchPages: async () => [],
     });
     expect(empty).toEqual({ status: "ok", related_reporting: [] });
@@ -70,7 +80,7 @@ describe("failed does not write related_reporting", () => {
   it("keeps related_reporting off the persist payload when retrieval fails", async () => {
     const failed = await runRelatedReporting({
       url: "https://example.com/kept",
-      topic: { contentType: "News", topic: "A harbour vote", entities: [] },
+      topic: { ...harbourTopic, entities: [] },
       searchPages: async () => {
         throw Object.assign(new Error("provider down"), { status: "failed" });
       },
@@ -86,12 +96,14 @@ describe("failed does not write related_reporting", () => {
   it("does not collapse unconfigured or timeout into ok+0", async () => {
     const unconfigured = await runRelatedReporting({
       url: "https://example.com/kept",
+      topic: harbourTopic,
       searchPages: async () => {
         throw Object.assign(new Error("SEARCH_API_KEY is not set"), { status: "unconfigured" });
       },
     });
     const timeout = await runRelatedReporting({
       url: "https://example.com/kept",
+      topic: harbourTopic,
       searchPages: async () => {
         throw Object.assign(new Error("aborted"), { name: "TimeoutError", status: "timeout" });
       },
@@ -117,9 +129,9 @@ describe("provider slot", () => {
     expect(
       buildSearchQuery({
         url: "https://example.com/kept",
-        topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"], date: "2026-09-01" },
+        topic: { ...harbourTopic, date: "2026-09-01" },
       }),
-    ).toBe("A harbour vote Praia 2026-09-01");
+    ).toBe("The harbour vote should carry Praia 2026-09-01");
 
     const normalized = normalizeRelated(
       [
@@ -154,7 +166,7 @@ describe("provider slot", () => {
         { url: "https://other.example/x", title: "Unrelated weather" },
         { url: "https://news.example/harbour", title: "Harbour vote in Praia" },
       ],
-      { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      harbourTopic,
     );
     expect(ranked[0]?.url).toBe("https://news.example/harbour");
     expect(ranked.map((page) => page.url)).toContain("https://other.example/x");
@@ -162,7 +174,7 @@ describe("provider slot", () => {
 });
 
 describe("query hygiene: keep-host author tokens stay out", () => {
-  it("does not feed williamgomes from a Substack host and prefers topic", () => {
+  it("does not feed williamgomes from a Substack host and prefers the claim", () => {
     const query = buildSearchQuery({
       url: "https://williamgomes1.substack.com/p/over-intelligentie",
       topic: {
@@ -170,9 +182,10 @@ describe("query hygiene: keep-host author tokens stay out", () => {
         topic: "Over intelligentie",
         entities: ["William Gomes"],
         date: "2026-09-01",
+        centralClaim: "Intelligence is not the same as wisdom",
       },
     });
-    expect(query).toBe("Over intelligentie 2026-09-01");
+    expect(query).toBe("Intelligence is not the same as wisdom 2026-09-01");
     expect(query.toLowerCase()).not.toMatch(/williamgomes/);
     expect(query).not.toMatch(/William Gomes/);
     expect(query).not.toMatch(/substack/i);
@@ -184,20 +197,19 @@ describe("query hygiene: keep-host author tokens stay out", () => {
       buildSearchQuery({
         url: "https://williamgomes1.substack.com/p/harbour",
         topic: {
-          contentType: "News",
-          topic: "A harbour vote",
+          ...harbourTopic,
           entities: ["William Gomes", "Praia"],
           date: "2026-09-01",
         },
       }),
-    ).toBe("A harbour vote Praia 2026-09-01");
+    ).toBe("The harbour vote should carry Praia 2026-09-01");
   });
 
-  it("falls back without stuffing the keep-host when topic is empty", () => {
+  it("does not fall back to the path or keep-host when the claim is missing", () => {
     const pathOnly = buildSearchQuery({
       url: "https://williamgomes1.substack.com/p/over-intelligentie",
     });
-    expect(pathOnly.toLowerCase()).toBe("over intelligentie");
+    expect(pathOnly).toBe("");
     expect(pathOnly.toLowerCase()).not.toMatch(/williamgomes/);
     expect(pathOnly).not.toMatch(/williamgomes1\.substack/);
 
@@ -219,7 +231,7 @@ describe("query hygiene: keep-host author tokens stay out", () => {
     });
     expect(empty).toEqual({ status: "ok", related_reporting: [] });
     expect(empty.status).not.toBe("failed");
-    expect(queries).toEqual(["over intelligentie"]);
+    expect(queries).toEqual([]);
     expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
     expect(moreOnThisTopicCopy({ status: "ok", count: 0 }).kind).toBe("empty");
   });
@@ -238,7 +250,7 @@ describe("zero-overlap pages drop after rank", () => {
     ];
     const record = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["William Gomes", "Praia"] },
+      topic: { ...harbourTopic, entities: ["William Gomes", "Praia"] },
       searchPages: async () => [...junk, ...overlapping],
     });
 
@@ -258,7 +270,7 @@ describe("zero-overlap pages drop after rank", () => {
   it("treats all-junk after filter as ok+0, not fail", async () => {
     const empty = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/over-intelligentie",
-      topic: { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] },
+      topic: { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"], centralClaim: "Over intelligentie" },
       searchPages: async () => [
         { url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" },
         { url: "https://www.dbnl.org/tekst/oltmans", title: "Oltmans", snippet: "DBNL catalogus" },
@@ -278,18 +290,18 @@ describe("zero-overlap pages drop after rank", () => {
         { url: "https://en.wikipedia.org/wiki/William_Gomes", title: "William Gomes footballer" },
         { url: "https://news.example/reading", title: "Over intelligentie" },
       ],
-      { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] },
+      { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"], centralClaim: "Over intelligentie" },
     );
     expect(ranked).toHaveLength(2);
     expect(
-      dropZeroOverlap(ranked, { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"] }, "https://williamgomes1.substack.com/p/note"),
+      dropZeroOverlap(ranked, { contentType: "Comment", topic: "Over intelligentie", entities: ["William Gomes"], centralClaim: "Over intelligentie" }, "https://williamgomes1.substack.com/p/note"),
     ).toEqual([{ url: "https://news.example/reading", title: "Over intelligentie" }]);
   });
 
   it("still excludes the keep URL and strips tags", async () => {
     const record = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      topic: harbourTopic,
       searchPages: async () => [
         { url: "https://williamgomes1.substack.com/p/harbour", title: "The keep" },
         { url: "https://news.example/tagged", title: "<b>Harbour</b> vote", snippet: "A <em>Praia</em> note." },
@@ -317,7 +329,7 @@ describe("Wikipedia hosts never appear on More on this topic", () => {
   it("drops language, apex, and mobile Wikipedia hosts from related_reporting", async () => {
     const record = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      topic: harbourTopic,
       searchPages: async () => overlappingWiki,
     });
     expect(record).toEqual({ status: "ok", related_reporting: [] });
@@ -328,7 +340,7 @@ describe("Wikipedia hosts never appear on More on this topic", () => {
   it("keeps a non-Wikipedia overlapping page and still excludes the keep URL", async () => {
     const record = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      topic: harbourTopic,
       searchPages: async () => [
         ...overlappingWiki,
         { url: "https://williamgomes1.substack.com/p/harbour", title: "The keep" },
@@ -352,7 +364,7 @@ describe("Wikipedia hosts never appear on More on this topic", () => {
   it("treats all-Wikipedia after filter as ok+0, not fail", async () => {
     const empty = await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
-      topic: { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      topic: harbourTopic,
       searchPages: async () => overlappingWiki,
     });
     expect(empty).toEqual({ status: "ok", related_reporting: [] });
@@ -366,11 +378,6 @@ describe("Wikipedia hosts never appear on More on this topic", () => {
 });
 
 describe("comparable + contrarian: Brave runs both, app merges", () => {
-  const harbourTopic = {
-    contentType: "News" as const,
-    topic: "A harbour vote",
-    entities: ["Praia"],
-  };
 
   it("calls the search slot once per Grok string and merges, dedupes, caps at five", async () => {
     const queries: string[] = [];
@@ -465,7 +472,7 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
         return [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }];
       },
     });
-    expect(queries).toEqual(["A harbour vote Praia 2026-09-01"]);
+    expect(queries).toEqual(["The harbour vote should carry Praia 2026-09-01"]);
     expect(fallback).toEqual({
       status: "ok",
       related_reporting: [{ url: "https://news.example/harbour", title: "Harbour vote in Praia" }],
@@ -477,7 +484,7 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
       topic: harbourTopic,
       searchStrings: async () => ({ comparable: "", contrarian: "harbour vote opposition" }),
     });
-    expect(emptyStrings).toEqual(["A harbour vote Praia"]);
+    expect(emptyStrings).toEqual(["The harbour vote should carry Praia"]);
 
     const urlPicks = await relatedSearchQueries({
       url: "https://example.com/kept",
@@ -487,7 +494,7 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
         contrarian: "https://news.example/against",
       }),
     });
-    expect(urlPicks).toEqual(["A harbour vote Praia"]);
+    expect(urlPicks).toEqual(["The harbour vote should carry Praia"]);
     expect(urlPicks.join(" ")).not.toMatch(/https?:\/\//);
   });
 
@@ -497,8 +504,7 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
     await runRelatedReporting({
       url: "https://williamgomes1.substack.com/p/harbour",
       topic: {
-        contentType: "News",
-        topic: "A harbour vote",
+        ...harbourTopic,
         entities: ["William Gomes", "Praia"],
       },
       searchStrings: async (topic) => {
@@ -514,7 +520,7 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
       },
     });
     expect(seen).toEqual([
-      { contentType: "News", topic: "A harbour vote", entities: ["Praia"] },
+      { contentType: "News", topic: "A harbour vote", entities: ["Praia"], centralClaim: "The harbour vote should carry" },
     ]);
     expect(JSON.stringify(seen).toLowerCase()).not.toMatch(/williamgomes/);
     expect(queries.join(" ").toLowerCase()).not.toMatch(/williamgomes/);
@@ -537,6 +543,100 @@ describe("comparable + contrarian: Brave runs both, app merges", () => {
     expect(empty).toEqual({ status: "ok", related_reporting: [] });
     expect(relatedPersist(empty).related_reporting).toEqual([]);
     expect(empty.status).not.toBe("failed");
+  });
+});
+
+describe("claim-first: Bubista-class entity news does not fill the five", () => {
+  const bubistaKeep = {
+    contentType: "Comment" as const,
+    topic: "Intelligence",
+    entities: ["Bubista", "William Gomes"],
+    centralClaim: "Intelligence is not the same as wisdom",
+  };
+
+  const bubistaNews = Array.from({ length: 5 }, (_, index) => ({
+    url: `https://sport.example/bubista-${index}`,
+    title: `Bubista scores again for Sporting ${index}`,
+    snippet: "William Gomes, known as Bubista, played a late winner. Transfer talk followed the Cape Verde midfielder.",
+  }));
+
+  it("drops entity-heavy news with no claim overlap, leaving an empty rail not a junk five", async () => {
+    const queries: string[] = [];
+    const record = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      topic: bubistaKeep,
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return bubistaNews;
+      },
+    });
+
+    expect(record).toEqual({ status: "ok", related_reporting: [] });
+    expect(record.status === "ok" ? record.related_reporting : undefined).not.toHaveLength(5);
+    expect(relatedPersist(record).related_reporting).toEqual([]);
+    expect(preselectClaimRelated(bubistaNews, bubistaKeep, "https://williamgomes1.substack.com/p/over-intelligentie")).toEqual([]);
+    expect(queries.join(" ").toLowerCase()).toMatch(/intelligence/);
+    expect(queries.join(" ")).not.toMatch(/Bubista scores/);
+    expect(SEARCH_RAW_MAX).toBe(40);
+    expect(RELATED_PRESELECT_MAX).toBe(12);
+    expect(
+      dropZeroOverlap(
+        [
+          {
+            url: "https://sport.example/the-word",
+            title: "The late winner",
+            snippet: "Not the same stadium. The crowd was there.",
+          },
+        ],
+        bubistaKeep,
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not search at all when claim-understanding is missing, even if entities remain", async () => {
+    const queries: string[] = [];
+    const empty = await runRelatedReporting({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      topic: { contentType: "Comment", topic: "Intelligence", entities: ["Bubista", "William Gomes"] },
+      searchPages: async ({ query }) => {
+        queries.push(query);
+        return bubistaNews;
+      },
+    });
+    expect(empty).toEqual({ status: "ok", related_reporting: [] });
+    expect(queries).toEqual([]);
+    expect(buildSearchQuery({
+      url: "https://williamgomes1.substack.com/p/over-intelligentie",
+      topic: { contentType: "Comment", topic: "Intelligence", entities: ["Bubista"] },
+    })).toBe("");
+  });
+
+  it("sends the judge at most twelve claim-preselected pages and drops irrelevant", async () => {
+    const seen: number[] = [];
+    const raw = Array.from({ length: 20 }, (_, index) => ({
+      url: `https://news.example/harbour-${index}`,
+      title: `Harbour vote ${index}`,
+      snippet: "The harbour vote should carry in Praia",
+    }));
+    const record = await runRelatedReporting({
+      url: "https://example.com/kept",
+      topic: harbourTopic,
+      searchPages: async () => raw,
+      judge: async (pages) => {
+        seen.push(pages.length);
+        return pages.map((page, index) =>
+          index === 0
+            ? { ...page, stance: "comparable" as const }
+            : { ...page, stance: "comparable" as const, url: page.url },
+        ).filter((_, index) => index < 2);
+      },
+    });
+    expect(seen).toEqual([RELATED_PRESELECT_MAX]);
+    expect(RELATED_PRESELECT_MAX).toBe(12);
+    expect(record.status).toBe("ok");
+    if (record.status !== "ok") return;
+    expect(record.related_reporting).toHaveLength(2);
+    expect(record.related_reporting.length).toBeLessThanOrEqual(RELATED_REPORTING_MAX);
   });
 });
 

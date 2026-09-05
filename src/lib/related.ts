@@ -5,15 +5,30 @@ import {
   type RelatedSearchStringsFn,
 } from "./related-queries";
 import { searchFailStatus, type SearchPages } from "./search";
-import type { Understanding } from "./understanding";
+import { hasCentralClaim, type Understanding } from "./understanding";
+
+export type RelatedJudgeFn = (
+  pages: RelatedPage[],
+  context: { topic?: Understanding | null; headline?: string },
+) => Promise<RelatedPage[]>;
 
 export const RELATED_REPORTING_MAX = 5;
+export const RELATED_PRESELECT_MAX = 12;
+export const SEARCH_RAW_MAX = 40;
+
+export const relatedStances = ["comparable", "contrarian", "inconclusive"] as const;
+export type RelatedStance = (typeof relatedStances)[number];
+
+export function isRelatedStance(value: unknown): value is RelatedStance {
+  return relatedStances.includes(value as RelatedStance);
+}
 
 export type RelatedPage = {
   url: string;
   title?: string;
   snippet?: string;
   date?: string;
+  stance?: RelatedStance;
 };
 
 export type RelatedRailOk = {
@@ -70,6 +85,86 @@ function tokens(value: string) {
     .filter((token) => token.length > 2);
 }
 
+/** Function words are not claim overlap. "the" in a football snippet is not wisdom. */
+const claimStop = new Set([
+  "the",
+  "and",
+  "for",
+  "that",
+  "this",
+  "with",
+  "from",
+  "not",
+  "are",
+  "was",
+  "were",
+  "have",
+  "has",
+  "had",
+  "been",
+  "but",
+  "its",
+  "into",
+  "than",
+  "then",
+  "them",
+  "they",
+  "their",
+  "there",
+  "what",
+  "when",
+  "where",
+  "which",
+  "who",
+  "will",
+  "would",
+  "could",
+  "should",
+  "about",
+  "over",
+  "after",
+  "before",
+  "between",
+  "same",
+  "also",
+  "just",
+  "only",
+  "more",
+  "most",
+  "some",
+  "such",
+  "very",
+  "can",
+  "may",
+  "might",
+  "shall",
+  "did",
+  "does",
+  "doing",
+  "done",
+  "onto",
+  "upon",
+  "each",
+  "both",
+  "other",
+  "another",
+  "these",
+  "those",
+  "your",
+  "our",
+  "out",
+  "off",
+  "any",
+  "all",
+  "too",
+  "via",
+  "per",
+]);
+
+function claimTokens(value: string) {
+  return tokens(value).filter((token) => token.length > 3 && !claimStop.has(token));
+}
+
 /** Host labels that are not an author. Publishing platforms and common public suffixes. */
 const hostNoise = new Set([
   "www",
@@ -90,8 +185,6 @@ const hostNoise = new Set([
   "beehiiv",
   "hashnode",
 ]);
-
-const pathNoise = new Set(["p", "posts", "post", "article", "articles", "blog", "news", "index", "amp", "html"]);
 
 /** Author-looking tokens from the keep hostname. williamgomes1.substack.com → williamgomes. */
 function hostAuthorTokens(url: string) {
@@ -155,26 +248,25 @@ function remainingEntities(topic: Understanding | null | undefined, junk: Set<st
     .slice(0, 4);
 }
 
-/** Path words only. Never the keep host. */
-function pathFallback(url: string, junk: Set<string>) {
-  let path = "";
-  try {
-    path = new URL(url).pathname;
-  } catch {
-    return "";
-  }
-  const parts = path
-    .split("/")
-    .flatMap((part) => part.replace(/\.[a-z0-9]+$/i, "").split(/[-_]+/))
-    .map((part) => part.trim())
-    .filter((part) => part.length > 2 && !pathNoise.has(part.toLowerCase()));
-  return compact(parts.filter((part) => !looksLikeHostAuthor(part, junk)).join(" "), 320);
+function remainingClaims(topic: Understanding | null | undefined, junk: Set<string>) {
+  const central = stripHostAuthor(topic?.centralClaim ?? "", junk, 400);
+  const supporting = (topic?.supportingClaims ?? [])
+    .map((item) => stripHostAuthor(item, junk, 240))
+    .filter(Boolean)
+    .slice(0, 2);
+  return { central, supporting };
+}
+
+export function claimText(topic?: Understanding | null, keepUrl = "") {
+  const junk = keepUrl ? hostAuthorTokens(keepUrl) : new Set<string>();
+  const { central, supporting } = remainingClaims(topic, junk);
+  return compact([central, ...supporting].filter(Boolean).join(" "), 800);
 }
 
 function wantedTokens(keepUrl: string, topic?: Understanding | null) {
-  const junk = hostAuthorTokens(keepUrl);
-  const topicText = stripHostAuthor(topic?.topic ?? "", junk, 180);
-  return new Set(tokens([topicText, ...remainingEntities(topic, junk)].join(" ")));
+  const claimed = claimText(topic, keepUrl);
+  if (!claimed) return new Set<string>();
+  return new Set(claimTokens(claimed));
 }
 
 function overlapScore(page: RelatedPage, wanted: Set<string>) {
@@ -188,29 +280,29 @@ function overlapScore(page: RelatedPage, wanted: Set<string>) {
 }
 
 /**
- * Topic + remaining entities + date.
- * Do not feed keep-host / author-looking tokens (williamgomes from a Substack host).
- * Empty topic falls back to the path, never the raw URL host.
+ * Central claim first. Supporting claims and remaining entities are context only.
+ * No entity-first fallback when the claim is missing. Prefer empty over junk.
  */
 export function buildSearchQuery(input: { url: string; topic?: Understanding | null }) {
   const junk = hostAuthorTokens(input.url);
-  const topic = stripHostAuthor(input.topic?.topic ?? "", junk, 180);
+  const { central, supporting } = remainingClaims(input.topic, junk);
+  if (!central) return "";
   const entities = remainingEntities(input.topic, junk);
   const date = compact(input.topic?.date, 10);
-  if (topic) {
-    return compact([topic, ...entities, date].filter(Boolean).join(" "), 320);
-  }
-  return compact([...entities, pathFallback(input.url, junk), date].filter(Boolean).join(" "), 320);
+  return compact([central, ...supporting, ...entities, date].filter(Boolean).join(" "), 320);
 }
 
 function hygienicTopic(topic: Understanding, keepUrl: string): Understanding {
   const junk = hostAuthorTokens(keepUrl);
   const date = compact(topic.date, 10);
+  const { central, supporting } = remainingClaims(topic, junk);
   return {
     contentType: topic.contentType,
     topic: stripHostAuthor(topic.topic, junk, 180),
     entities: remainingEntities(topic, junk),
     ...(date ? { date } : {}),
+    ...(central ? { centralClaim: central } : {}),
+    ...(supporting.length ? { supportingClaims: supporting } : {}),
   };
 }
 
@@ -235,10 +327,13 @@ export async function relatedSearchQueries(input: {
   topic?: Understanding | null;
   searchStrings?: RelatedSearchStringsFn;
 }): Promise<string[]> {
+  if (!hasCentralClaim(input.topic)) {
+    return [];
+  }
   const fallback = buildSearchQuery({ url: input.url, topic: input.topic });
   if (input.searchStrings && input.topic) {
     const cleaned = hygienicTopic(input.topic, input.url);
-    if (cleaned.topic) {
+    if (cleaned.centralClaim) {
       try {
         const pair = await input.searchStrings(cleaned);
         const comparable = cleanSearchString(pair?.comparable ?? "", input.url);
@@ -247,7 +342,7 @@ export async function relatedSearchQueries(input: {
           return comparable === contrarian ? [comparable] : [comparable, contrarian];
         }
       } catch {
-        // Fail-closed for the Grok-string step. Topic query still runs.
+        // Fail-closed for the Grok-string step. Claim query still runs.
       }
     }
   }
@@ -288,20 +383,20 @@ export function dedupeRelated(pages: RelatedPage[]) {
   return unique;
 }
 
-function scorePage(page: RelatedPage, topic?: Understanding | null) {
-  if (!topic?.topic) return 0;
-  const wanted = new Set(tokens([topic.topic, ...(topic.entities ?? [])].join(" ")));
+function scorePage(page: RelatedPage, topic?: Understanding | null, keepUrl = "") {
+  const wanted = wantedTokens(keepUrl, topic);
+  if (wanted.size === 0) return 0;
   return overlapScore(page, wanted);
 }
 
-export function rankRelated(pages: RelatedPage[], topic?: Understanding | null) {
+export function rankRelated(pages: RelatedPage[], topic?: Understanding | null, keepUrl = "") {
   return [...pages]
-    .map((page, index) => ({ page, index, score: scorePage(page, topic) }))
+    .map((page, index) => ({ page, index, score: scorePage(page, topic, keepUrl) }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((row) => row.page);
 }
 
-/** After rank. Drop zero overlap with topic / remaining entities. Prefer fewer over junk. */
+/** After rank. Drop zero overlap with the claims. Prefer fewer over junk. */
 export function dropZeroOverlap(
   pages: RelatedPage[],
   topic?: Understanding | null,
@@ -310,6 +405,28 @@ export function dropZeroOverlap(
   const wanted = wantedTokens(keepUrl, topic);
   if (wanted.size === 0) return [];
   return pages.filter((page) => overlapScore(page, wanted) > 0);
+}
+
+/** Cheap claim-token preselect before the bounded Grok judge. Entities do not fill this list. */
+export function preselectClaimRelated(
+  pages: RelatedPage[],
+  topic?: Understanding | null,
+  keepUrl = "",
+) {
+  return dropZeroOverlap(rankRelated(pages, topic, keepUrl), topic, keepUrl).slice(
+    0,
+    RELATED_PRESELECT_MAX,
+  );
+}
+
+function pageFields(page: RelatedPage): RelatedPage {
+  return {
+    url: page.url,
+    ...(page.title ? { title: page.title } : {}),
+    ...(page.snippet ? { snippet: page.snippet } : {}),
+    ...(page.date ? { date: page.date } : {}),
+    ...(isRelatedStance(page.stance) ? { stance: page.stance } : {}),
+  };
 }
 
 export function relatedFail(error: unknown, at = new Date().toISOString()): RelatedRailFail {
@@ -366,6 +483,7 @@ export function readRelatedReporting(value: unknown): RelatedPage[] | null {
         ...(typeof rec.title === "string" && rec.title ? { title: rec.title } : {}),
         ...(typeof rec.snippet === "string" && rec.snippet ? { snippet: rec.snippet } : {}),
         ...(typeof rec.date === "string" && rec.date ? { date: rec.date } : {}),
+        ...(isRelatedStance(rec.stance) ? { stance: rec.stance } : {}),
       },
     ];
   });
@@ -374,8 +492,10 @@ export function readRelatedReporting(value: unknown): RelatedPage[] | null {
 export async function runRelatedReporting(input: {
   url: string;
   topic?: Understanding | null;
+  headline?: string;
   searchPages: SearchPages;
   searchStrings?: RelatedSearchStringsFn;
+  judge?: RelatedJudgeFn;
 }): Promise<RelatedRailRecord> {
   const queries = await relatedSearchQueries({
     url: input.url,
@@ -389,14 +509,44 @@ export async function runRelatedReporting(input: {
   try {
     for (const query of queries) {
       raw.push(...(await input.searchPages({ query })));
+      if (raw.length >= SEARCH_RAW_MAX) break;
     }
   } catch (error) {
     return relatedFail(error);
   }
-  const related_reporting = dropZeroOverlap(
-    rankRelated(dedupeRelated(normalizeRelated(raw, input.url)), input.topic),
+  const preselected = preselectClaimRelated(
+    dedupeRelated(normalizeRelated(raw.slice(0, SEARCH_RAW_MAX), input.url)),
     input.topic,
     input.url,
-  ).slice(0, RELATED_REPORTING_MAX);
-  return { status: "ok", related_reporting };
+  );
+  if (!preselected.length) {
+    return { status: "ok", related_reporting: [] };
+  }
+  if (!input.judge) {
+    return {
+      status: "ok",
+      related_reporting: preselected.slice(0, RELATED_REPORTING_MAX).map(pageFields),
+    };
+  }
+  try {
+    const judged = await input.judge(preselected, {
+      topic: input.topic,
+      headline: input.headline,
+    });
+    const allowed = new Set(preselected.map((page) => canonicalizeUrl(page.url)).filter(Boolean));
+    const kept = judged.filter((page) => allowed.has(canonicalizeUrl(page.url)));
+    return {
+      status: "ok",
+      related_reporting: kept.slice(0, RELATED_REPORTING_MAX).map(pageFields),
+    };
+  } catch {
+    // Label fail is not ok+0 and not could-not-look. Pages stay unlabeled.
+    return {
+      status: "ok",
+      related_reporting: preselected.slice(0, RELATED_REPORTING_MAX).map((page) => {
+        const { stance: _stance, ...rest } = page;
+        return pageFields(rest);
+      }),
+    };
+  }
 }

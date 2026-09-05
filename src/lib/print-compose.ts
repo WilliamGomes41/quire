@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import fontkitMod from "@pdf-lib/fontkit";
 import { PDFDocument, rgb, type PDFFont, type PDFImage, type PDFPage } from "pdf-lib";
+import { stanceCopy } from "../copy";
 import type { BoundIssue } from "./bind";
 import { composeIssue, type PagePlan } from "./compose";
 import { paperBox, printPlan, type PaperName, type PrintSheet } from "./print";
@@ -17,6 +18,7 @@ const PAPER = rgb(250 / 255, 247 / 255, 241 / 255);
 const INK = rgb(28 / 255, 24 / 255, 20 / 255);
 const BINDING = rgb(74 / 255, 92 / 255, 86 / 255);
 const MUTED = rgb(121 / 255, 118 / 255, 113 / 255);
+const QUIET = rgb(157 / 255, 153 / 255, 148 / 255);
 const RULE = rgb(214 / 255, 211 / 255, 206 / 255);
 
 const FACES = {
@@ -249,20 +251,33 @@ function drawContents(book: Book, sheet: Extract<PrintSheet, { kind: "contents" 
   book.y -= 8;
   for (const row of sheet.rows) {
     need(book, 28, sheet.folio);
+    const label = !row.absent && row.stance ? stanceCopy(row.stance) : "";
+    const stanceWidth = label ? book.faces.sans.widthOfTextAtSize(label, 8) + 10 : 0;
+    if (label) {
+      book.page.drawText(label, {
+        x: book.left,
+        y: book.y - 13,
+        size: 8,
+        font: book.faces.sans,
+        color: row.stance === "inconclusive" ? QUIET : MUTED,
+      });
+    }
     book.page.drawText(row.title, {
-      x: book.left,
+      x: book.left + stanceWidth,
       y: book.y - 13,
-      size: 13,
-      font: book.faces.serif,
-      color: INK,
+      size: row.absent ? 11 : 13,
+      font: row.absent ? book.faces.sans : book.faces.serif,
+      color: row.absent ? MUTED : INK,
     });
-    book.page.drawText(row.folio, {
-      x: book.left + book.width - book.faces.sans.widthOfTextAtSize(row.folio, 9),
-      y: book.y - 12,
-      size: 9,
-      font: book.faces.sans,
-      color: MUTED,
-    });
+    if (row.folio) {
+      book.page.drawText(row.folio, {
+        x: book.left + book.width - book.faces.sans.widthOfTextAtSize(row.folio, 9),
+        y: book.y - 12,
+        size: 9,
+        font: book.faces.sans,
+        color: MUTED,
+      });
+    }
     book.page.drawRectangle({
       x: book.left,
       y: book.y - 20,

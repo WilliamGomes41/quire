@@ -100,6 +100,7 @@ describe("create issue binds a visible magazine page", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: ["Praia"],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => [
         { url: "https://news.example/one", title: "Harbour vote in Praia" },
@@ -360,6 +361,7 @@ describe("create issue binds a visible magazine page", () => {
         contentType: "News",
         topic: "A harbour vote",
         entities: [],
+        centralClaim: "The harbour vote should carry",
       }),
       searchPages: async () => [{ url: "https://news.example/one", title: "Harbour vote in Praia" }],
     });

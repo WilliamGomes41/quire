@@ -4,7 +4,7 @@
  */
 
 import type { BoundIssue } from "./bind";
-import { composeIssue, type SequenceSheet } from "./compose";
+import { composeIssue, type ContentsRow, type SequenceSheet } from "./compose";
 import type { DesignIntent } from "./design";
 
 export const paperNames = ["a4", "letter"] as const;
@@ -24,7 +24,7 @@ export type PrintSheet =
       kicker: string;
       title: string;
       folio: string;
-      rows: { title: string; folio: string }[];
+      rows: ContentsRow[];
     }
   | {
       kind: "piece";

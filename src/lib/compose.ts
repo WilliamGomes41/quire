@@ -4,11 +4,13 @@
  * Original words stay the author's. Plan is derived at read time. PROTOCOL §6.
  */
 
-import { contentsKicker, productName } from "../copy";
+import { contentsAbsentCopy, contentsKicker, productName, stanceCopy } from "../copy";
 import type { BodyBlock, FigureKind } from "./article";
 import type { BoundIssue, BoundPiece } from "./bind";
 import { leadPiece } from "./bind";
 import { designIntent, figureFitFor, type DesignIntent } from "./design";
+import { isRelatedStance, type RelatedStance } from "./related";
+import { slotState } from "./related-stance";
 import { takeText } from "./take";
 
 export type FigureFit = DesignIntent["figure_fit"];
@@ -41,6 +43,13 @@ export type SequenceSheet = {
   videoUrl?: string;
 };
 
+export type ContentsRow = {
+  title: string;
+  folio: string;
+  absent?: boolean;
+  stance?: RelatedStance;
+};
+
 export type PagePlan = {
   title: string;
   intent: DesignIntent;
@@ -59,7 +68,7 @@ export type PagePlan = {
     kicker: string;
     title: string;
     folio: string;
-    rows: { title: string; folio: string }[];
+    rows: ContentsRow[];
   };
   sequence: SequenceSheet[];
 };
@@ -127,13 +136,7 @@ function topicOverlap(a: BoundPiece, b: BoundPiece) {
   return n;
 }
 
-/** Lead first. Related cluster by topic, never by hostname. */
-export function clusterPieces(pieces: BoundPiece[]): BoundPiece[] {
-  const lead = leadPiece(pieces);
-  if (!lead) return pieces;
-  const rest = pieces.filter((piece) => piece.url !== lead.url);
-  if (rest.length === 0) return [lead];
-
+function topicCluster(lead: BoundPiece, rest: BoundPiece[]): BoundPiece[] {
   const topicOf = (piece: BoundPiece) => (piece.topic ?? "").trim().toLowerCase();
   const groups = new Map<string, BoundPiece[]>();
   const unkeyed: BoundPiece[] = [];
@@ -148,7 +151,7 @@ export function clusterPieces(pieces: BoundPiece[]): BoundPiece[] {
     groups.set(key, list);
   }
 
-  const ordered: BoundPiece[] = [lead];
+  const ordered: BoundPiece[] = [];
   const leadKey = topicOf(lead);
   if (leadKey && groups.has(leadKey)) {
     ordered.push(...(groups.get(leadKey) ?? []));
@@ -164,6 +167,42 @@ export function clusterPieces(pieces: BoundPiece[]): BoundPiece[] {
       .map((item) => item.piece),
   );
   return ordered;
+}
+
+function stanceBucket(piece: BoundPiece): "comparable" | "contrarian" | "inconclusive" | "unlabeled" {
+  if (piece.stance === "comparable") return "comparable";
+  if (piece.stance === "contrarian") return "contrarian";
+  if (piece.stance === "inconclusive") return "inconclusive";
+  return "unlabeled";
+}
+
+/** Lead first. Related cluster by topic, never by hostname. When any stance: original → comparable → contrarian → inconclusive → unlabeled; topic cluster within. */
+export function clusterPieces(pieces: BoundPiece[]): BoundPiece[] {
+  const lead = leadPiece(pieces);
+  if (!lead) return pieces;
+  const rest = pieces.filter((piece) => piece.url !== lead.url);
+  if (rest.length === 0) return [lead];
+
+  if (!rest.some((piece) => piece.stance)) {
+    return [lead, ...topicCluster(lead, rest)];
+  }
+
+  const buckets = {
+    comparable: [] as BoundPiece[],
+    contrarian: [] as BoundPiece[],
+    inconclusive: [] as BoundPiece[],
+    unlabeled: [] as BoundPiece[],
+  };
+  for (const piece of rest) {
+    buckets[stanceBucket(piece)].push(piece);
+  }
+  return [
+    lead,
+    ...topicCluster(lead, buckets.comparable),
+    ...topicCluster(lead, buckets.contrarian),
+    ...topicCluster(lead, buckets.inconclusive),
+    ...topicCluster(lead, buckets.unlabeled),
+  ];
 }
 
 function quietDate(value: string) {
@@ -183,11 +222,12 @@ function quietDate(value: string) {
   return trimmed;
 }
 
-/** Quiet publisher · date. Source-owned only. Never a hostname fallback. */
+/** Quiet publisher · date. Source-owned only. Never a hostname fallback. Related stance sits here when labeled. */
 export function pieceColophon(piece: BoundPiece) {
   const publisher = piece.publisher?.trim() ?? "";
   const date = piece.published ? quietDate(piece.published) : "";
-  return [publisher, date].filter(Boolean).join(" · ");
+  const stance = piece.role === "related" && piece.stance ? stanceCopy(piece.stance) : "";
+  return [publisher, date, stance].filter(Boolean).join(" · ");
 }
 
 /**
@@ -197,6 +237,27 @@ export function pieceColophon(piece: BoundPiece) {
 export function sourceOwnedCoverLine(issue: BoundIssue): string | undefined {
   const line = leadPiece(issue.pieces)?.coverLine?.trim();
   return line || undefined;
+}
+
+function contentsRows(pieces: BoundPiece[], sequence: SequenceSheet[]): ContentsRow[] {
+  const rows: ContentsRow[] = sequence.map((sheet, index) => {
+    const piece = pieces[index];
+    const stance = piece?.role === "related" && isRelatedStance(piece.stance) ? piece.stance : undefined;
+    return {
+      title: sheet.headline,
+      folio: sheet.folio,
+      ...(stance ? { stance } : {}),
+    };
+  });
+  const related = pieces.filter((piece) => piece.role === "related");
+  if (related.length === 0) return rows;
+  if (slotState(related, "comparable") === "absent") {
+    rows.push({ title: contentsAbsentCopy("comparable"), folio: "", absent: true });
+  }
+  if (slotState(related, "contrarian") === "absent") {
+    rows.push({ title: contentsAbsentCopy("contrarian"), folio: "", absent: true });
+  }
+  return rows;
 }
 
 function asLead(piece: BoundPiece): PageLead {
@@ -286,7 +347,7 @@ export function composeIssue(issue: BoundIssue): PagePlan {
       kicker: contentsKicker,
       title: "Contents",
       folio: folioOf(2),
-      rows: sequence.map((sheet) => ({ title: sheet.headline, folio: sheet.folio })),
+      rows: contentsRows(clustered, sequence),
     },
     sequence,
   };

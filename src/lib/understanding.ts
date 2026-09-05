@@ -1,15 +1,24 @@
 import { couldNotUnderstand } from "../copy";
+import {
+  claimSourceReady,
+  claimSourceText,
+  type ClaimSource,
+} from "./article";
 import { grokModel, xaiChatUrl } from "./model";
 import { serverEnv } from "./server-env";
 
 export const contentTypes = ["News", "Comment", "Study", "Notice"] as const;
 export type ContentType = (typeof contentTypes)[number];
 
+export const SUPPORTING_CLAIMS_MAX = 2;
+
 export type Understanding = {
   contentType: ContentType;
   topic: string;
   entities: string[];
   date?: string;
+  centralClaim?: string;
+  supportingClaims?: string[];
 };
 
 export type UnderstandingFail = {
@@ -25,26 +34,40 @@ export type UnderstandingRecord = UnderstandingOk | UnderstandingFail;
 export const understandingJsonSchema = {
   type: "object",
   additionalProperties: false,
-  required: ["contentType", "topic", "entities", "date"],
+  required: ["contentType", "topic", "entities", "date", "centralClaim", "supportingClaims"],
   properties: {
     contentType: { type: "string", enum: [...contentTypes] },
     topic: { type: "string" },
     entities: { type: "array", items: { type: "string" } },
     date: { type: ["string", "null"] },
+    centralClaim: { type: ["string", "null"] },
+    supportingClaims: { type: "array", items: { type: "string" } },
   },
 };
 
 export const understandingSystemPrompt = [
-  "Structure the topic of this kept public URL.",
-  "Return only content type (News, Comment, Study, or Notice), topic, entities, and optional date.",
-  "You only structure the topic.",
+  "Structure the topic and claims of this kept public source.",
+  "Return only content type (News, Comment, Study, or Notice), topic, entities, optional date, centralClaim, and up to two supportingClaims.",
+  "Claims are the carrying thesis, explanation, or normative reasoning — not only factual claims.",
+  "Ground claims in the supplied source text: headline, snippet or description, and cleaned body.",
+  "URL-only text is insufficient for claim extraction.",
+  "If the supplied text is not enough to extract a claim, leave centralClaim empty and supportingClaims empty.",
+  "Topic and entities remain.",
+  "You only structure the topic and claims.",
   "You must not search the web.",
   "You must not pick URLs.",
   "You must not call web_search.",
   "You must not use tools.",
 ].join(" ");
 
-export function parseUnderstanding(value: unknown): Understanding {
+export function hasCentralClaim(topic?: Understanding | null) {
+  return Boolean(topic?.centralClaim?.trim());
+}
+
+export function parseUnderstanding(
+  value: unknown,
+  opts?: { allowClaims?: boolean },
+): Understanding {
   if (!value || typeof value !== "object") {
     throw new Error("Understanding is not an object.");
   }
@@ -61,12 +84,25 @@ export function parseUnderstanding(value: unknown): Understanding {
   }
   const date =
     typeof rec.date === "string" && rec.date.trim() !== "" ? rec.date.trim() : undefined;
+  const allowClaims = opts?.allowClaims !== false;
+  const centralClaim =
+    allowClaims && typeof rec.centralClaim === "string" && rec.centralClaim.trim() !== ""
+      ? rec.centralClaim.trim()
+      : undefined;
+  const supportingClaims = allowClaims
+    ? (Array.isArray(rec.supportingClaims) ? rec.supportingClaims : [])
+        .filter((item): item is string => typeof item === "string" && item.trim() !== "")
+        .map((item) => item.trim())
+        .slice(0, SUPPORTING_CLAIMS_MAX)
+    : [];
 
   return {
     contentType: contentType as ContentType,
     topic: rec.topic.trim(),
     entities: rec.entities.map((item) => item.trim()).filter(Boolean),
     ...(date ? { date } : {}),
+    ...(centralClaim ? { centralClaim } : {}),
+    ...(supportingClaims.length ? { supportingClaims } : {}),
   };
 }
 
@@ -96,12 +132,22 @@ export function readUnderstanding(value: unknown): UnderstandingRecord | null {
   return null;
 }
 
-export function buildUnderstandingRequest(input: { url: string }) {
+export function understandingUserContent(input: { url: string; source?: ClaimSource }) {
+  if (claimSourceReady(input.source) && input.source) {
+    return [`url: ${input.url}`, claimSourceText(input.source)].join("\n");
+  }
+  return [
+    `url: ${input.url}`,
+    "Source text is insufficient for claim extraction. Leave centralClaim and supportingClaims empty.",
+  ].join("\n");
+}
+
+export function buildUnderstandingRequest(input: { url: string; source?: ClaimSource }) {
   return {
     model: grokModel,
     messages: [
       { role: "system", content: understandingSystemPrompt },
-      { role: "user", content: input.url },
+      { role: "user", content: understandingUserContent(input) },
     ],
     response_format: {
       type: "json_schema",
@@ -119,8 +165,10 @@ export type GrokPost = (
   init: { method: string; headers: Record<string, string>; body: string },
 ) => Promise<Response>;
 
+export type UnderstandInput = { url: string; source?: ClaimSource };
+
 export async function runGrokUnderstanding(
-  input: { url: string },
+  input: UnderstandInput,
   deps?: { apiKey?: string; post?: GrokPost },
 ): Promise<Understanding> {
   const apiKey = deps?.apiKey ?? serverEnv("XAI_API_KEY");
@@ -128,6 +176,7 @@ export async function runGrokUnderstanding(
     throw new Error("XAI_API_KEY is not set");
   }
 
+  const allowClaims = claimSourceReady(input.source);
   const request = buildUnderstandingRequest(input);
   const post = deps?.post ?? fetch;
   const response = await post(xaiChatUrl, {
@@ -145,7 +194,7 @@ export async function runGrokUnderstanding(
 
   const payload: unknown = await response.json();
   const content = grokMessageContent(payload);
-  return parseUnderstanding(JSON.parse(content) as unknown);
+  return parseUnderstanding(JSON.parse(content) as unknown, { allowClaims });
 }
 
 function grokMessageContent(payload: unknown): string {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { extractClaimSource, claimSourceReady } from "../src/lib/article";
 import { grokModel } from "../src/lib/model";
 import {
   buildUnderstandingRequest,
@@ -7,10 +8,17 @@ import {
   runGrokUnderstanding,
   understandingJsonSchema,
   understandingSystemPrompt,
+  understandingUserContent,
 } from "../src/lib/understanding";
 
+const harbourSource = {
+  headline: "The harbour vote",
+  snippet: "The assembly met at dusk in Praia.",
+  body: "The assembly met at dusk in Praia. The motion should carry after a quiet count along the quay. Councillors said the harbour vote binds the next season of work.".repeat(3),
+};
+
 describe("understanding schema", () => {
-  it("accepts News, Comment, Study, or Notice with topic, entities, and optional date", () => {
+  it("accepts News, Comment, Study, or Notice with topic, entities, optional date, and claims", () => {
     expect(contentTypes).toEqual(["News", "Comment", "Study", "Notice"]);
     expect(contentTypes).not.toContain("Opinion");
     expect(understandingJsonSchema.properties.contentType.enum).toEqual([
@@ -25,6 +33,8 @@ describe("understanding schema", () => {
       "topic",
       "entities",
       "date",
+      "centralClaim",
+      "supportingClaims",
     ]);
 
     expect(
@@ -33,12 +43,16 @@ describe("understanding schema", () => {
         topic: "A harbour vote",
         entities: ["Praia"],
         date: "2026-09-01",
+        centralClaim: "The harbour vote should carry in Praia",
+        supportingClaims: ["The quay needs a bound count"],
       }),
     ).toEqual({
       contentType: "News",
       topic: "A harbour vote",
       entities: ["Praia"],
       date: "2026-09-01",
+      centralClaim: "The harbour vote should carry in Praia",
+      supportingClaims: ["The quay needs a bound count"],
     });
 
     expect(
@@ -47,11 +61,44 @@ describe("understanding schema", () => {
         topic: "A column on reading",
         entities: [],
         date: null,
+        centralClaim: null,
+        supportingClaims: [],
       }),
     ).toEqual({
       contentType: "Comment",
       topic: "A column on reading",
       entities: [],
+    });
+  });
+
+  it("caps supportingClaims at two and drops claims when source text is insufficient", () => {
+    expect(
+      parseUnderstanding({
+        contentType: "News",
+        topic: "A harbour vote",
+        entities: [],
+        date: null,
+        centralClaim: "The harbour vote should carry",
+        supportingClaims: ["One", "Two", "Three"],
+      }).supportingClaims,
+    ).toEqual(["One", "Two"]);
+
+    expect(
+      parseUnderstanding(
+        {
+          contentType: "News",
+          topic: "A harbour vote",
+          entities: ["Praia"],
+          date: null,
+          centralClaim: "Invented from the URL",
+          supportingClaims: ["Also invented"],
+        },
+        { allowClaims: false },
+      ),
+    ).toEqual({
+      contentType: "News",
+      topic: "A harbour vote",
+      entities: ["Praia"],
     });
   });
 
@@ -70,7 +117,10 @@ describe("understanding schema", () => {
 
 describe("Grok does not search", () => {
   it("builds a request without web_search, tools, or search_parameters", () => {
-    const request = buildUnderstandingRequest({ url: "https://example.com/kept" });
+    const request = buildUnderstandingRequest({
+      url: "https://example.com/kept",
+      source: harbourSource,
+    });
     const body = JSON.stringify(request);
 
     expect(request.model).toBe(grokModel);
@@ -84,16 +134,19 @@ describe("Grok does not search", () => {
     expect(understandingSystemPrompt).toMatch(/must not search/i);
     expect(understandingSystemPrompt).toMatch(/must not pick URLs/i);
     expect(understandingSystemPrompt).toMatch(/must not call web_search/i);
+    expect(understandingSystemPrompt).toMatch(/centralClaim/);
     expect(request.messages[1]).toEqual({
       role: "user",
-      content: "https://example.com/kept",
+      content: understandingUserContent({ url: "https://example.com/kept", source: harbourSource }),
     });
+    expect(request.messages[1]?.content).toMatch(/The harbour vote/);
+    expect(request.messages[1]?.content).toMatch(/assembly met at dusk/);
   });
 
-  it("posts that same no-search body to xAI", async () => {
+  it("posts that same no-search body to xAI and keeps URL-only claims empty", async () => {
     let posted: unknown;
     const understood = await runGrokUnderstanding(
-      { url: "https://example.com/study" },
+      { url: "https://example.com/study", source: harbourSource },
       {
         apiKey: "test-key",
         post: async (_url, init) => {
@@ -108,6 +161,8 @@ describe("Grok does not search", () => {
                       topic: "A paper",
                       entities: ["WHO"],
                       date: null,
+                      centralClaim: "The paper binds the count",
+                      supportingClaims: [],
                     }),
                   },
                 },
@@ -123,10 +178,48 @@ describe("Grok does not search", () => {
       contentType: "Study",
       topic: "A paper",
       entities: ["WHO"],
+      centralClaim: "The paper binds the count",
     });
-    expect(posted).toEqual(buildUnderstandingRequest({ url: "https://example.com/study" }));
+    expect(posted).toEqual(
+      buildUnderstandingRequest({ url: "https://example.com/study", source: harbourSource }),
+    );
     expect(posted).not.toHaveProperty("tools");
     expect(posted).not.toHaveProperty("search_parameters");
+
+    const urlOnly = await runGrokUnderstanding(
+      { url: "https://example.com/url-only" },
+      {
+        apiKey: "test-key",
+        post: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      contentType: "News",
+                      topic: "A harbour vote",
+                      entities: ["Praia"],
+                      date: null,
+                      centralClaim: "Invented from the URL",
+                      supportingClaims: ["Also invented"],
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      },
+    );
+    expect(urlOnly).toEqual({
+      contentType: "News",
+      topic: "A harbour vote",
+      entities: ["Praia"],
+    });
+    expect(understandingUserContent({ url: "https://example.com/url-only" })).toMatch(
+      /insufficient for claim extraction/,
+    );
   });
 });
 
@@ -137,5 +230,25 @@ describe("Grok request still has no search after the rail", () => {
     expect(request).not.toHaveProperty("search_parameters");
     expect(request).not.toHaveProperty("web_search");
     expect(Object.keys(request)).toEqual(["model", "messages", "response_format"]);
+  });
+});
+
+describe("claim source grounding", () => {
+  it("needs headline or snippet plus a cleaned body, not a URL alone", () => {
+    expect(claimSourceReady(undefined)).toBe(false);
+    expect(claimSourceReady({ headline: "The harbour vote" })).toBe(false);
+    expect(claimSourceReady(harbourSource)).toBe(true);
+
+    const html = `
+      <html><head><title>The harbour vote</title>
+      <meta property="og:description" content="The assembly met at dusk in Praia."></head>
+      <body><article><h1>The harbour vote</h1>
+      <p>${"The assembly met at dusk in Praia. ".repeat(8)}</p>
+      </article></body></html>
+    `;
+    const source = extractClaimSource(html, "https://example.com/kept");
+    expect(source.headline).toMatch(/harbour vote/i);
+    expect(source.body?.length).toBeGreaterThan(80);
+    expect(claimSourceReady(source)).toBe(true);
   });
 });
