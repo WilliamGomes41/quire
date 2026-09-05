@@ -8,6 +8,7 @@ import {
   type RelatedRailRecord,
 } from "./related";
 import { runGrokRelatedQueries, type RelatedSearchStringsFn } from "./related-queries";
+import { applyRelatedStances, runGrokRelatedStance, type RelatedStanceFn } from "./related-stance";
 import { resolveSearchPages, type SearchPages } from "./search";
 import {
   runSourceHeadline,
@@ -46,6 +47,7 @@ export type SaveOptions = {
   understand?: (input: { url: string }) => Promise<Understanding>;
   searchPages?: SearchPages;
   searchStrings?: RelatedSearchStringsFn;
+  labelStance?: RelatedStanceFn;
   readHeadline?: (input: { url: string }) => Promise<SourceHeadlineFound>;
 };
 
@@ -64,9 +66,11 @@ function emptyClipFields() {
 
 /**
  * Keep always saves. Persist first, then a source headline from the fetch,
- * then one Grok understanding, then two short search strings, then the search rail.
+ * then one Grok understanding, then two short search strings, then the search rail,
+ * then one fail-closed stance label on already-retrieved pages.
  * If the two strings are missing, the rail falls back to the topic query.
- * Headline, Grok-string, and search failure do not fail Keep. PROTOCOL §3 / §4 / §9.
+ * Label failure leaves the rail ok without stance fields.
+ * Headline, Grok-string, search, and label failure do not fail Keep.
  */
 export async function saveClip(
   input: { url: string },
@@ -117,6 +121,7 @@ export async function saveClip(
 
   const searchPages = options?.searchPages ?? resolveSearchPages();
   const searchStrings = options?.searchStrings ?? runGrokRelatedQueries;
+  const labelStance = options?.labelStance ?? runGrokRelatedStance;
   let related: RelatedRailRecord | null = null;
   try {
     related = await runRelatedReporting({
@@ -127,6 +132,23 @@ export async function saveClip(
     });
   } catch (error) {
     related = relatedFail(error);
+  }
+  if (related?.status === "ok" && related.related_reporting.length >= 1) {
+    try {
+      const labeled = await labelStance(related.related_reporting, {
+        topic: record?.status === "ok" ? record : null,
+        headline: headline?.status === "ok" ? headline.text : undefined,
+      });
+      related = {
+        status: "ok",
+        related_reporting: applyRelatedStances(
+          related.related_reporting,
+          labeled.flatMap((page) => (page.stance ? [{ url: page.url, stance: page.stance }] : [])),
+        ),
+      };
+    } catch {
+      // Rail stays ok. No stance fields. Keep saves.
+    }
   }
   if (related) {
     try {

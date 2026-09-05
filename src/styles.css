@@ -302,10 +302,19 @@ nav {
 }
 
 .rail li .folio,
-.rail li .note {
+.rail li .note,
+.rail li .stance {
   margin: 0;
   font-size: 0.82rem;
   color: color-mix(in srgb, var(--ink) 62%, var(--paper));
+}
+
+.rail li .stance.quiet {
+  color: color-mix(in srgb, var(--ink) 42%, var(--paper));
+}
+
+.rail ul.absent {
+  margin-top: 0.7rem;
 }
 
 .board {
@@ -831,6 +840,16 @@ button.toc-row:hover {
   font-family: var(--font-serif);
   font-size: 1.45rem;
   line-height: 1.15;
+}
+
+.toc-absent {
+  margin: 0;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-serif);
+  font-size: 1.2rem;
+  line-height: 1.2;
+  color: color-mix(in srgb, var(--ink) 62%, var(--paper));
 }
 
 .toc-dots {

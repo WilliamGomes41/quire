@@ -12,6 +12,8 @@ import {
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
   nothingSelected,
+  railAbsentCopy,
+  stanceCopy,
   pressCoverMeta,
   pressEmpty,
   pressLabel,
@@ -45,6 +47,8 @@ import {
   takeBoundOffDesk,
 } from "../lib/store";
 import { resolveSearchPages } from "../lib/search";
+import type { RelatedPage } from "../lib/related";
+import { slotState } from "../lib/related-stance";
 import { runGrokUnderstanding } from "../lib/understanding";
 import { QuireMark } from "../mark";
 
@@ -464,6 +468,8 @@ function RelatedSelect({
   const visible = relatedVisible(pages, selected);
   const collapsed = relatedCollapsed(pages, selected);
   const count = relatedCountLabel(pages.length);
+  const comparableSlot = slotState(pages, "comparable");
+  const contrarianSlot = slotState(pages, "contrarian");
 
   return (
     <section className="rail">
@@ -489,6 +495,20 @@ function RelatedSelect({
           </ul>
         </div>
       ) : null}
+      {comparableSlot === "absent" || contrarianSlot === "absent" ? (
+        <ul className="absent">
+          {comparableSlot === "absent" ? (
+            <li>
+              <span className="stance">{railAbsentCopy("comparable")}</span>
+            </li>
+          ) : null}
+          {contrarianSlot === "absent" ? (
+            <li>
+              <span className="stance">{railAbsentCopy("contrarian")}</span>
+            </li>
+          ) : null}
+        </ul>
+      ) : null}
     </section>
   );
 }
@@ -498,7 +518,7 @@ function RelatedItem({
   on,
   onToggle,
 }: {
-  page: { url: string; title?: string; snippet?: string; date?: string };
+  page: RelatedPage;
   on: boolean;
   onToggle: (url: string, on: boolean) => void;
 }) {
@@ -513,6 +533,11 @@ function RelatedItem({
       >
         {row.title}
       </button>
+      {row.stance ? (
+        <span className={row.stance === "inconclusive" ? "stance quiet" : "stance"}>
+          {stanceCopy(row.stance)}
+        </span>
+      ) : null}
       {row.snippet ? <span className="note">{row.snippet}</span> : null}
       {row.detail ? <span className="folio">{row.detail}</span> : null}
       <button

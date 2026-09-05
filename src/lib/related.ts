@@ -9,11 +9,19 @@ import type { Understanding } from "./understanding";
 
 export const RELATED_REPORTING_MAX = 5;
 
+export const relatedStances = ["comparable", "contrarian", "inconclusive"] as const;
+export type RelatedStance = (typeof relatedStances)[number];
+
+export function isRelatedStance(value: unknown): value is RelatedStance {
+  return relatedStances.includes(value as RelatedStance);
+}
+
 export type RelatedPage = {
   url: string;
   title?: string;
   snippet?: string;
   date?: string;
+  stance?: RelatedStance;
 };
 
 export type RelatedRailOk = {
@@ -366,6 +374,7 @@ export function readRelatedReporting(value: unknown): RelatedPage[] | null {
         ...(typeof rec.title === "string" && rec.title ? { title: rec.title } : {}),
         ...(typeof rec.snippet === "string" && rec.snippet ? { snippet: rec.snippet } : {}),
         ...(typeof rec.date === "string" && rec.date ? { date: rec.date } : {}),
+        ...(isRelatedStance(rec.stance) ? { stance: rec.stance } : {}),
       },
     ];
   });

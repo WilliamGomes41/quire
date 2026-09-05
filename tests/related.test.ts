@@ -545,12 +545,16 @@ describe("related rail stays a search slot, not Grok web_search", () => {
     const { readFileSync, existsSync } = await import("node:fs");
     const related = readFileSync("src/lib/related.ts", "utf8");
     const queries = readFileSync("src/lib/related-queries.ts", "utf8");
+    const stance = readFileSync("src/lib/related-stance.ts", "utf8");
     const understanding = readFileSync("src/lib/understanding.ts", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
     expect(related).not.toMatch(/web_search/);
     expect(queries).toMatch(/must not call web_search/);
     expect(queries).not.toMatch(/tools:/);
     expect(queries).not.toMatch(/search_parameters/);
+    expect(stance).toMatch(/must not call web_search/);
+    expect(stance).not.toMatch(/tools:/);
+    expect(stance).not.toMatch(/search_parameters/);
     expect(understanding).toMatch(/must not call web_search/);
     expect(existsSync("src/routes/press.tsx")).toBe(false);
     expect(css).toMatch(/--paper: #faf7f1;/);

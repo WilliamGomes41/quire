@@ -199,15 +199,21 @@ function ReadIssue() {
                 <h2>{page.contents.title}</h2>
               </div>
               <ol className="contents-list">
-                {page.contents.rows.map((row, rowIndex) => (
-                  <li key={row.folio}>
-                    <button type="button" className="toc-row" onClick={() => goTo(pieceSheetIndex(rowIndex))}>
-                      <p className="toc-title">{row.title}</p>
-                      <span className="toc-dots" aria-hidden />
-                      <span className="folio">{row.folio}</span>
-                    </button>
-                  </li>
-                ))}
+                {page.contents.rows.map((row, rowIndex) =>
+                  row.absent ? (
+                    <li key={`absent-${row.title}`}>
+                      <p className="toc-absent">{row.title}</p>
+                    </li>
+                  ) : (
+                    <li key={row.folio}>
+                      <button type="button" className="toc-row" onClick={() => goTo(pieceSheetIndex(rowIndex))}>
+                        <p className="toc-title">{row.title}</p>
+                        <span className="toc-dots" aria-hidden />
+                        <span className="folio">{row.folio}</span>
+                      </button>
+                    </li>
+                  ),
+                )}
               </ol>
             </>
           ) : null}

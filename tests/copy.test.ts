@@ -1,7 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  contrastingAngle,
+  contrastingAngleAbsentContents,
+  contrastingAngleAbsentRail,
+  contentsAbsentCopy,
   couldNotFetchWords,
   couldNotLook,
+  couldNotPlace,
   couldNotReadHeadline,
   couldNotUnderstand,
   createIssueLabel,
@@ -11,6 +16,11 @@ import {
   kicker,
   moreOnThisTopicCopy,
   nothingMoreOnTopic,
+  otherReporting,
+  otherReportingAbsentContents,
+  otherReportingAbsentRail,
+  railAbsentCopy,
+  stanceCopy,
   originalInByDefault,
   pressCoverMeta,
   pressEmpty,
@@ -108,5 +118,23 @@ describe("product voice", () => {
     expect(spoken.text).toMatch(/\(403\)/);
     expect(spoken.text.match(/Could not read a headline from the source\./g)).toHaveLength(1);
     expect(sourceHeadlineCopy({ status: "empty" }).text).not.toBe(spoken.text);
+  });
+
+  it("keeps stance, could not look, could not place, and absent copy apart", () => {
+    expect(stanceCopy("comparable")).toBe(otherReporting);
+    expect(stanceCopy("contrarian")).toBe(contrastingAngle);
+    expect(stanceCopy("inconclusive")).toBe(couldNotPlace);
+    expect(railAbsentCopy("comparable")).toBe(otherReportingAbsentRail);
+    expect(railAbsentCopy("contrarian")).toBe(contrastingAngleAbsentRail);
+    expect(contentsAbsentCopy("comparable")).toBe(otherReportingAbsentContents);
+    expect(contentsAbsentCopy("contrarian")).toBe(contrastingAngleAbsentContents);
+    expect(couldNotLook).not.toBe(couldNotPlace);
+    expect(couldNotPlace).not.toBe(otherReportingAbsentRail);
+    expect(otherReportingAbsentRail).not.toBe(otherReportingAbsentContents);
+    expect(contrastingAngleAbsentRail).not.toBe(contrastingAngleAbsentContents);
+    expect(couldNotLook).not.toMatch(/not in this set|no contrasting piece|Could not place/i);
+    expect(couldNotPlace).not.toMatch(/could not look|not in this set|missing from this issue/i);
+    expect(otherReportingAbsentRail).toMatch(/not in this set/);
+    expect(contrastingAngleAbsentContents).toMatch(/no contrasting piece/);
   });
 });

@@ -1,4 +1,4 @@
-/** Pinned xAI model. Keep understanding, related search strings, and optional take after Select. */
+/** Pinned xAI model. Keep understanding, related search strings, related stance, and optional take after Select. */
 
 import { serverEnv } from "./server-env";
 

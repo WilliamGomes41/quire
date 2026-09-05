@@ -13,6 +13,7 @@ const envHelper = "src/lib/server-env.ts";
 const runtimeReaders = [
   "src/lib/understanding.ts",
   "src/lib/related-queries.ts",
+  "src/lib/related-stance.ts",
   "src/lib/take.ts",
   "src/lib/search.ts",
   "src/lib/model.ts",
