@@ -624,6 +624,167 @@ describe("stance criteria: bound, opposite conclusion, tone, insufficient", () =
   });
 });
 
+describe("Designer UI lock", () => {
+  it("keeps Helm GO copy strings exact", () => {
+    expect(otherReporting).toBe("Other reporting");
+    expect(contrastingAngle).toBe("A contrasting angle");
+    expect(couldNotPlace).toBe("Could not place");
+    expect(otherReportingAbsentRail).toBe("Other reporting — not in this set.");
+    expect(contrastingAngleAbsentRail).toBe("A contrasting angle — not in this set.");
+    expect(otherReportingAbsentContents).toBe("Other reporting is missing from this issue.");
+    expect(contrastingAngleAbsentContents).toBe("This issue has no contrasting piece.");
+    expect(stanceCopy("comparable")).toBe("Other reporting");
+    expect(stanceCopy("contrarian")).toBe("A contrasting angle");
+    expect(stanceCopy("inconclusive")).toBe("Could not place");
+  });
+
+  it("puts Desk stance under the related headline, quiets Could not place, and uses no red or icon", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const css = readFileSync("src/styles.css", "utf8");
+    const related = keep.slice(keep.indexOf("function RelatedItem"));
+    expect(related.indexOf("row.title")).toBeLessThan(related.indexOf("row.stance"));
+    expect(related.indexOf("row.stance")).toBeLessThan(related.indexOf("row.snippet"));
+    expect(related).toMatch(/stance === "inconclusive" \? "stance quiet" : "stance"/);
+    expect(related).toMatch(/stanceCopy\(row\.stance\)/);
+    expect(related).not.toMatch(/className="fail"|lucide|svg|<img|⚠|✘|✗|✓|●|icon/i);
+    expect(related).not.toMatch(/disabled=\{page\.stance/);
+    expect(related).toMatch(/className="include"/);
+    expect(keep).toMatch(/railAbsentCopy\("comparable"\)/);
+    expect(keep).toMatch(/className="empty"\>\{railAbsentCopy/);
+    expect(css).toMatch(/\.rail li \.stance \{[\s\S]*color-mix\(in srgb, var\(--ink\)/);
+    expect(css).toMatch(/\.rail li \.stance\.quiet \{[\s\S]*color-mix\(in srgb, var\(--ink\) 42%/);
+    expect(css).toMatch(/--paper: #faf7f1;/);
+    expect(css).toMatch(/--ink: #1c1814;/);
+    expect(css).toMatch(/--binding: #4a5c56;/);
+    const stanceBlocks = [...css.matchAll(/\.rail li \.stance[^{]*\{[^}]+\}/g)].map((match) => match[0]);
+    expect(stanceBlocks.length).toBeGreaterThanOrEqual(2);
+    for (const block of stanceBlocks) {
+      expect(block).toMatch(/var\(--ink\)|var\(--paper\)|var\(--muted\)/);
+      expect(block).not.toMatch(/#c00|#e00|#f00|red|crimson|tomato|salmon|orange|#[0-9a-f]{3,8}/i);
+    }
+  });
+
+  it("leaves Select free for every stance", () => {
+    const keep = readFileSync("src/routes/index.tsx", "utf8");
+    const related = keep.slice(keep.indexOf("function RelatedItem"));
+    expect(related).toMatch(/onToggle\(page\.url, !on\)/);
+    expect(related).not.toMatch(/disabled=\{/);
+    expect(chosenPieces(
+      {
+        id: "clip-1",
+        url: "https://example.com/kept",
+        savedAt: "2026-09-01T00:00:00.000Z",
+        understanding: { status: "ok", ...harbourTopic },
+        relatedRail: { status: "ok" },
+        relatedReporting: [
+          { url: "https://news.example/a", stance: "comparable" },
+          { url: "https://news.example/b", stance: "contrarian" },
+          { url: "https://news.example/c", stance: "inconclusive" },
+          { url: "https://news.example/d" },
+        ],
+        sourceHeadline: null,
+      },
+      {
+        includeOriginal: true,
+        relatedUrls: [
+          "https://news.example/a",
+          "https://news.example/b",
+          "https://news.example/c",
+          "https://news.example/d",
+        ],
+      },
+    ).map((item) => item.url)).toEqual([
+      "https://example.com/kept",
+      "https://news.example/a",
+      "https://news.example/b",
+      "https://news.example/c",
+      "https://news.example/d",
+    ]);
+  });
+
+  it("treats contents as the argument: absent rows without folio only when related is bound and judged", () => {
+    const judged = composeIssue({
+      id: "issue-lock",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [
+        piece({ url: "https://example.com/kept", role: "original", headline: "The harbour vote" }),
+        piece({
+          url: "https://news.example/a",
+          role: "related",
+          headline: "Other reporting on the vote",
+          stance: "comparable",
+        }),
+      ],
+    });
+    expect(judged.contents.rows.map((row) => ({ title: row.title, folio: row.folio, absent: row.absent }))).toEqual([
+      { title: "The harbour vote", folio: "03", absent: undefined },
+      { title: "Other reporting on the vote", folio: "04", absent: undefined },
+      { title: contrastingAngleAbsentContents, folio: "", absent: true },
+    ]);
+    expect(judged.sequence.some((sheet) => sheet.headline === contrastingAngleAbsentContents)).toBe(false);
+    expect(JSON.stringify(judged.cover)).not.toMatch(/no contrasting piece|missing from this issue/);
+
+    const originalOnly = composeIssue({
+      id: "issue-original-lock",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [piece({ url: "https://example.com/kept", role: "original", headline: "The harbour vote" })],
+    });
+    expect(originalOnly.contents.rows.some((row) => row.absent)).toBe(false);
+  });
+
+  it("puts piece stance in the colophon only, and Print uses the same plan", () => {
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    const pieceSheet = read.slice(read.indexOf("function PieceSheet"), read.indexOf("function SheetPhoto"));
+    expect(pieceSheet).toMatch(/sheet\.colophon \? <p className="colophon">\{sheet\.colophon\}<\/p> : null/);
+    expect(pieceSheet).not.toMatch(/stanceCopy|sheet\.stance|row\.stance/);
+    expect(pieceSheet).not.toMatch(/className="stance"|Could not place|A contrasting angle/);
+    expect(
+      pieceColophon(
+        piece({
+          url: "https://news.example/against",
+          role: "related",
+          headline: "Against",
+          publisher: "Praia Daily",
+          published: "2026-09-01",
+          stance: "contrarian",
+        }),
+      ),
+    ).toBe("Praia Daily · 1 September 2026 · A contrasting angle");
+    const issue = {
+      id: "issue-print-lock",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [
+        piece({ url: "https://example.com/kept", role: "original", headline: "The harbour vote" }),
+        piece({
+          url: "https://news.example/a",
+          role: "related",
+          headline: "A look",
+          stance: "inconclusive",
+        }),
+      ],
+    };
+    const page = composeIssue(issue);
+    const plan = printPlan(issue);
+    const contents = plan.sheets.find((sheet) => sheet.kind === "contents");
+    expect(contents?.kind).toBe("contents");
+    if (contents?.kind === "contents") {
+      expect(contents.rows).toEqual(page.contents.rows);
+    }
+    expect(plan.intent).toEqual(page.intent);
+    expect(page.sequence[1]?.colophon).toBe(couldNotPlace);
+    expect(page.sequence[1]).not.toHaveProperty("stance");
+  });
+});
+
 describe("Desk, colophon, and Select stay free", () => {
   it("places stance under the related headline and keeps include free", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");

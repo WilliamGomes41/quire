@@ -847,9 +847,9 @@ button.toc-row:hover {
   padding: 1.15rem 0;
   border-bottom: 1px solid var(--rule);
   font-family: var(--font-serif);
-  font-size: 1.2rem;
-  line-height: 1.2;
-  color: color-mix(in srgb, var(--ink) 62%, var(--paper));
+  font-size: 1.45rem;
+  line-height: 1.15;
+  color: var(--muted);
 }
 
 .toc-dots {
