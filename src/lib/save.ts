@@ -122,13 +122,14 @@ export async function saveClip(
   try {
     const understood = await understand({ url: clip.url, source });
     record = { status: "ok", ...understood };
-    await store.persistUnderstanding(clip.id, record);
   } catch (error) {
     record = understandingFail(error);
+  }
+  if (record) {
     try {
       await store.persistUnderstanding(clip.id, record);
     } catch {
-      // Keep stands. The fail still returns on the clip below.
+      // Keep stands. An ok characterization is not rewritten as fail.
     }
   }
 

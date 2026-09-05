@@ -31,15 +31,27 @@ export type UnderstandingOk = Understanding & { status: "ok" };
 
 export type UnderstandingRecord = UnderstandingOk | UnderstandingFail;
 
+const characterizationProperties = {
+  contentType: { type: "string", enum: [...contentTypes] },
+  topic: { type: ["string", "null"] },
+  entities: { type: "array", items: { type: "string" } },
+  date: { type: ["string", "null"] },
+};
+
+/** Characterization only. Used when claim source is insufficient so claims cannot wipe contentType. */
+export const characterizationJsonSchema = {
+  type: "object",
+  additionalProperties: false,
+  required: ["contentType", "topic", "entities", "date"],
+  properties: characterizationProperties,
+};
+
 export const understandingJsonSchema = {
   type: "object",
   additionalProperties: false,
   required: ["contentType", "topic", "entities", "date", "centralClaim", "supportingClaims"],
   properties: {
-    contentType: { type: "string", enum: [...contentTypes] },
-    topic: { type: "string" },
-    entities: { type: "array", items: { type: "string" } },
-    date: { type: ["string", "null"] },
+    ...characterizationProperties,
     centralClaim: { type: ["string", "null"] },
     supportingClaims: { type: "array", items: { type: "string" } },
   },
@@ -52,7 +64,7 @@ export const understandingSystemPrompt = [
   "Ground claims in the supplied source text: headline, snippet or description, and cleaned body.",
   "URL-only text is insufficient for claim extraction.",
   "If the supplied text is not enough to extract a claim, leave centralClaim empty and supportingClaims empty.",
-  "Topic and entities remain.",
+  "Content type and topic remain even when claims are empty or limited.",
   "You only structure the topic and claims.",
   "You must not search the web.",
   "You must not pick URLs.",
@@ -76,12 +88,13 @@ export function parseUnderstanding(
   if (!contentTypes.includes(contentType as ContentType)) {
     throw new Error("Understanding content type must be News, Comment, Study, or Notice.");
   }
-  if (typeof rec.topic !== "string" || rec.topic.trim() === "") {
-    throw new Error("Understanding topic is required.");
-  }
-  if (!Array.isArray(rec.entities) || rec.entities.some((item) => typeof item !== "string")) {
-    throw new Error("Understanding entities must be an array of strings.");
-  }
+  const topic = typeof rec.topic === "string" ? rec.topic.trim() : "";
+  const entities = Array.isArray(rec.entities)
+    ? rec.entities
+        .filter((item): item is string => typeof item === "string")
+        .map((item) => item.trim())
+        .filter(Boolean)
+    : [];
   const date =
     typeof rec.date === "string" && rec.date.trim() !== "" ? rec.date.trim() : undefined;
   const allowClaims = opts?.allowClaims !== false;
@@ -98,8 +111,8 @@ export function parseUnderstanding(
 
   return {
     contentType: contentType as ContentType,
-    topic: rec.topic.trim(),
-    entities: rec.entities.map((item) => item.trim()).filter(Boolean),
+    topic,
+    entities,
     ...(date ? { date } : {}),
     ...(centralClaim ? { centralClaim } : {}),
     ...(supportingClaims.length ? { supportingClaims } : {}),
@@ -127,7 +140,11 @@ export function readUnderstanding(value: unknown): UnderstandingRecord | null {
     };
   }
   if (rec.status === "ok") {
-    return { status: "ok", ...parseUnderstanding(rec) };
+    try {
+      return { status: "ok", ...parseUnderstanding(rec) };
+    } catch {
+      return null;
+    }
   }
   return null;
 }
@@ -143,6 +160,7 @@ export function understandingUserContent(input: { url: string; source?: ClaimSou
 }
 
 export function buildUnderstandingRequest(input: { url: string; source?: ClaimSource }) {
+  const allowClaims = claimSourceReady(input.source);
   return {
     model: grokModel,
     messages: [
@@ -154,7 +172,7 @@ export function buildUnderstandingRequest(input: { url: string; source?: ClaimSo
       json_schema: {
         name: "keep_understanding",
         strict: true,
-        schema: understandingJsonSchema,
+        schema: allowClaims ? understandingJsonSchema : characterizationJsonSchema,
       },
     },
   };
@@ -193,18 +211,22 @@ export async function runGrokUnderstanding(
   }
 
   const payload: unknown = await response.json();
-  const content = grokMessageContent(payload);
-  return parseUnderstanding(JSON.parse(content) as unknown, { allowClaims });
+  return parseUnderstanding(grokUnderstandingValue(payload), { allowClaims });
 }
 
-function grokMessageContent(payload: unknown): string {
+function grokUnderstandingValue(payload: unknown): unknown {
   if (!payload || typeof payload !== "object") {
     throw new Error("Grok returned no understanding.");
   }
   const choices = (payload as { choices?: { message?: { content?: unknown } }[] }).choices;
   const content = choices?.[0]?.message?.content;
+  if (content && typeof content === "object") return content;
   if (typeof content !== "string" || content.trim() === "") {
     throw new Error("Grok returned no understanding text.");
   }
-  return content;
+  try {
+    return JSON.parse(content);
+  } catch {
+    throw new Error("Grok returned no understanding.");
+  }
 }

@@ -61,7 +61,10 @@ export function keptFigure(record: SourceHeadlineRecord | null | undefined) {
   return record.figure?.trim() ?? "";
 }
 
-/** Board label from stored understanding when status is ok. Comment → Opinion. None if missing or failed. */
+/**
+ * Board label from stored contentType when understanding is ok.
+ * Comment → Opinion. Not gated on centralClaim. None if missing or failed.
+ */
 export function paperBadgeLabel(record: UnderstandingRecord | null | undefined): PaperMark | null {
   if (!record || record.status !== "ok") return null;
   return boardMarks[record.contentType];
