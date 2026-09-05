@@ -5,6 +5,7 @@ import {
   contrastingAngleAbsentContents,
   contrastingAngleAbsentRail,
   contentsAbsentCopy,
+  contentsKicker,
   couldNotLook,
   couldNotPlace,
   otherReporting,
@@ -625,7 +626,7 @@ describe("stance criteria: bound, opposite conclusion, tone, insufficient", () =
 });
 
 describe("Designer UI lock", () => {
-  it("keeps Helm GO copy strings exact", () => {
+  it("keeps Helm GO copy strings exact, including the contents kicker", () => {
     expect(otherReporting).toBe("Other reporting");
     expect(contrastingAngle).toBe("A contrasting angle");
     expect(couldNotPlace).toBe("Could not place");
@@ -636,26 +637,36 @@ describe("Designer UI lock", () => {
     expect(stanceCopy("comparable")).toBe("Other reporting");
     expect(stanceCopy("contrarian")).toBe("A contrasting angle");
     expect(stanceCopy("inconclusive")).toBe("Could not place");
+    expect(readFileSync("src/copy.ts", "utf8")).toMatch(/export const contentsKicker = "In this issue"/);
   });
 
-  it("puts Desk stance under the related headline, quiets Could not place, and uses no red or icon", () => {
+  it("puts Desk stance under the related headline in muted Sans, quiets Could not place, and uses no red, icon, or fourth hex", () => {
     const keep = readFileSync("src/routes/index.tsx", "utf8");
     const css = readFileSync("src/styles.css", "utf8");
     const related = keep.slice(keep.indexOf("function RelatedItem"));
     expect(related.indexOf("row.title")).toBeLessThan(related.indexOf("row.stance"));
     expect(related.indexOf("row.stance")).toBeLessThan(related.indexOf("row.snippet"));
+    expect(related).toMatch(/row\.stance \? \(/);
+    expect(related).toMatch(/row\.stance \? \([\s\S]*stanceCopy\(row\.stance\)[\s\S]*\) : null/);
     expect(related).toMatch(/stance === "inconclusive" \? "stance quiet" : "stance"/);
     expect(related).toMatch(/stanceCopy\(row\.stance\)/);
-    expect(related).not.toMatch(/className="fail"|lucide|svg|<img|⚠|✘|✗|✓|●|icon/i);
+    expect(related).not.toMatch(/className="fail"|lucide|svg|<img|⚠|✘|✗|✓|●|icon|AI labeled/i);
     expect(related).not.toMatch(/disabled=\{page\.stance/);
     expect(related).toMatch(/className="include"/);
     expect(keep).toMatch(/railAbsentCopy\("comparable"\)/);
-    expect(keep).toMatch(/className="empty"\>\{railAbsentCopy/);
-    expect(css).toMatch(/\.rail li \.stance \{[\s\S]*color-mix\(in srgb, var\(--ink\)/);
+    expect(keep).toMatch(/className="stance"\>\{railAbsentCopy/);
+    expect(keep).not.toMatch(/className="empty"\>\{railAbsentCopy/);
+    expect(keep).not.toMatch(/className="fail"\>\{railAbsentCopy/);
+    expect(css).toMatch(/--muted: color-mix\(in srgb, var\(--ink\) 58%, var\(--paper\)\)/);
+    expect(css).toMatch(/button\.related-title \{[\s\S]*font-family:\s*var\(--font-serif\)/);
+    expect(css).toMatch(/\.rail li \.stance \{[\s\S]*font-family:\s*var\(--font-sans\)[\s\S]*color:\s*var\(--muted\)/);
     expect(css).toMatch(/\.rail li \.stance\.quiet \{[\s\S]*color-mix\(in srgb, var\(--ink\) 42%/);
     expect(css).toMatch(/--paper: #faf7f1;/);
     expect(css).toMatch(/--ink: #1c1814;/);
     expect(css).toMatch(/--binding: #4a5c56;/);
+    expect(css).not.toMatch(/AI labeled/i);
+    expect(keep).not.toMatch(/AI labeled/i);
+    expect(readFileSync("src/routes/read.$id.tsx", "utf8")).not.toMatch(/AI labeled/i);
     const stanceBlocks = [...css.matchAll(/\.rail li \.stance[^{]*\{[^}]+\}/g)].map((match) => match[0]);
     expect(stanceBlocks.length).toBeGreaterThanOrEqual(2);
     for (const block of stanceBlocks) {
@@ -719,13 +730,47 @@ describe("Designer UI lock", () => {
         }),
       ],
     });
+    expect(judged.contents.kicker).toBe(contentsKicker);
+    expect(judged.contents.kicker).toBe("In this issue");
     expect(judged.contents.rows.map((row) => ({ title: row.title, folio: row.folio, absent: row.absent }))).toEqual([
       { title: "The harbour vote", folio: "03", absent: undefined },
       { title: "Other reporting on the vote", folio: "04", absent: undefined },
       { title: contrastingAngleAbsentContents, folio: "", absent: true },
     ]);
+    expect(judged.contents.rows[0]?.title).toBe("The harbour vote");
+    expect(judged.contents.rows[0]?.title).not.toMatch(/Other reporting|A contrasting angle|Could not place/);
+    expect(judged.contents.rows.filter((row) => row.absent).map((row) => row.title)).toEqual([
+      contrastingAngleAbsentContents,
+    ]);
+    const bothAbsent = composeIssue({
+      id: "issue-both-absent",
+      createdAt: "2026-09-01T00:00:00.000Z",
+      title: "The harbour vote",
+      leadUrl: "https://example.com/kept",
+      take: null,
+      pieces: [
+        piece({ url: "https://example.com/kept", role: "original", headline: "The harbour vote" }),
+        piece({
+          url: "https://news.example/a",
+          role: "related",
+          headline: "A look",
+          stance: "inconclusive",
+        }),
+      ],
+    });
+    expect(bothAbsent.contents.rows.filter((row) => row.absent).map((row) => row.title)).toEqual([
+      otherReportingAbsentContents,
+      contrastingAngleAbsentContents,
+    ]);
     expect(judged.sequence.some((sheet) => sheet.headline === contrastingAngleAbsentContents)).toBe(false);
-    expect(JSON.stringify(judged.cover)).not.toMatch(/no contrasting piece|missing from this issue/);
+    expect(JSON.stringify(judged.cover)).not.toMatch(/Other reporting|A contrasting angle|Could not place|no contrasting piece|missing from this issue/);
+    expect(judged.cover.masthead).toBe("Quire");
+    expect(judged.take).toBeUndefined();
+    const read = readFileSync("src/routes/read.$id.tsx", "utf8");
+    expect(read).toMatch(/className="toc-absent"/);
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(css).toMatch(/\.toc-absent \{[\s\S]*font-family:\s*var\(--font-sans\)[\s\S]*color:\s*var\(--muted\)/);
+    expect(css).toMatch(/\.toc-title \{[\s\S]*font-family:\s*var\(--font-serif\)/);
 
     const originalOnly = composeIssue({
       id: "issue-original-lock",
@@ -743,7 +788,11 @@ describe("Designer UI lock", () => {
     const pieceSheet = read.slice(read.indexOf("function PieceSheet"), read.indexOf("function SheetPhoto"));
     expect(pieceSheet).toMatch(/sheet\.colophon \? <p className="colophon">\{sheet\.colophon\}<\/p> : null/);
     expect(pieceSheet).not.toMatch(/stanceCopy|sheet\.stance|row\.stance/);
-    expect(pieceSheet).not.toMatch(/className="stance"|Could not place|A contrasting angle/);
+    expect(pieceSheet).not.toMatch(/className="stance"|Could not place|A contrasting angle|AI labeled/);
+    expect(pieceSheet).toMatch(/<h2>\{sheet\.headline\}<\/h2>/);
+    const css = readFileSync("src/styles.css", "utf8");
+    expect(css).toMatch(/\.colophon \{[\s\S]*font-family:\s*var\(--font-sans\)[\s\S]*color:\s*var\(--muted\)/);
+    expect(css).toMatch(/\.piece-header h2 \{[\s\S]*font-family:\s*var\(--font-serif\)/);
     expect(
       pieceColophon(
         piece({

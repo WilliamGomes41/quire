@@ -499,12 +499,12 @@ function RelatedSelect({
         <ul className="absent">
           {comparableSlot === "absent" ? (
             <li>
-              <p className="empty">{railAbsentCopy("comparable")}</p>
+              <span className="stance">{railAbsentCopy("comparable")}</span>
             </li>
           ) : null}
           {contrarianSlot === "absent" ? (
             <li>
-              <p className="empty">{railAbsentCopy("contrarian")}</p>
+              <span className="stance">{railAbsentCopy("contrarian")}</span>
             </li>
           ) : null}
         </ul>
