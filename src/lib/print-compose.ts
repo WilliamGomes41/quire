@@ -252,17 +252,19 @@ function drawContents(book: Book, sheet: Extract<PrintSheet, { kind: "contents" 
     book.page.drawText(row.title, {
       x: book.left,
       y: book.y - 13,
-      size: 13,
-      font: book.faces.serif,
-      color: INK,
+      size: row.absent ? 11 : 13,
+      font: row.absent ? book.faces.sans : book.faces.serif,
+      color: row.absent ? MUTED : INK,
     });
-    book.page.drawText(row.folio, {
-      x: book.left + book.width - book.faces.sans.widthOfTextAtSize(row.folio, 9),
-      y: book.y - 12,
-      size: 9,
-      font: book.faces.sans,
-      color: MUTED,
-    });
+    if (row.folio) {
+      book.page.drawText(row.folio, {
+        x: book.left + book.width - book.faces.sans.widthOfTextAtSize(row.folio, 9),
+        y: book.y - 12,
+        size: 9,
+        font: book.faces.sans,
+        color: MUTED,
+      });
+    }
     book.page.drawRectangle({
       x: book.left,
       y: book.y - 20,

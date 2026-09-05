@@ -6,8 +6,10 @@
 import { couldNotReadHeadline } from "../copy";
 import {
   compactText,
+  extractClaimSource,
   isPublicHttpUrl,
   type ArticleGet,
+  type ClaimSource,
 } from "./article";
 
 export type SourceHeadlineOk = {
@@ -179,13 +181,18 @@ export function readSourceHeadline(value: unknown): SourceHeadlineRecord | null 
   return null;
 }
 
-export async function runSourceHeadline(input: {
+export type KeepSourceFound = {
+  found: SourceHeadlineFound;
+  source: ClaimSource;
+};
+
+async function fetchKeepHtml(input: {
   url: string;
   get?: ArticleGet;
   timeoutMs?: number;
-}): Promise<SourceHeadlineRecord> {
+}): Promise<string> {
   if (!isPublicHttpUrl(input.url)) {
-    return sourceHeadlineFail(new Error(couldNotReadHeadline));
+    throw new Error(couldNotReadHeadline);
   }
   const timeoutMs = input.timeoutMs ?? 12_000;
   const signal =
@@ -203,6 +210,34 @@ export async function runSourceHeadline(input: {
   if (!response.ok) {
     throw new Error(`${couldNotReadHeadline} (${response.status})`);
   }
-  const html = await response.text();
-  return sourceHeadlineRecord(extractSourceHeadline(html, input.url));
+  return response.text();
+}
+
+export async function runSourceHeadline(input: {
+  url: string;
+  get?: ArticleGet;
+  timeoutMs?: number;
+}): Promise<SourceHeadlineRecord> {
+  try {
+    const html = await fetchKeepHtml(input);
+    return sourceHeadlineRecord(extractSourceHeadline(html, input.url));
+  } catch (error) {
+    if (!isPublicHttpUrl(input.url)) {
+      return sourceHeadlineFail(new Error(couldNotReadHeadline));
+    }
+    throw error;
+  }
+}
+
+/** One fetch: source headline plus cleaned claim text. Body is not persisted on the headline. */
+export async function runKeepSource(input: {
+  url: string;
+  get?: ArticleGet;
+  timeoutMs?: number;
+}): Promise<KeepSourceFound> {
+  const html = await fetchKeepHtml(input);
+  return {
+    found: extractSourceHeadline(html, input.url),
+    source: extractClaimSource(html, input.url),
+  };
 }

@@ -28,6 +28,36 @@ export const nothingMoreOnTopic = "We looked and found nothing more on this topi
 
 export const couldNotLook = "Could not look for more on this topic.";
 
+export const otherReporting = "Other reporting";
+
+export const contrastingAngle = "A contrasting angle";
+
+export const couldNotPlace = "Could not place";
+
+export const otherReportingAbsentRail = "Other reporting — not in this set.";
+
+export const contrastingAngleAbsentRail = "A contrasting angle — not in this set.";
+
+export const otherReportingAbsentContents = "Other reporting is missing from this issue.";
+
+export const contrastingAngleAbsentContents = "This issue has no contrasting piece.";
+
+export type RelatedStanceCopy = "comparable" | "contrarian" | "inconclusive";
+
+export function stanceCopy(stance: RelatedStanceCopy) {
+  if (stance === "comparable") return otherReporting;
+  if (stance === "contrarian") return contrastingAngle;
+  return couldNotPlace;
+}
+
+export function railAbsentCopy(slot: "comparable" | "contrarian") {
+  return slot === "comparable" ? otherReportingAbsentRail : contrastingAngleAbsentRail;
+}
+
+export function contentsAbsentCopy(slot: "comparable" | "contrarian") {
+  return slot === "comparable" ? otherReportingAbsentContents : contrastingAngleAbsentContents;
+}
+
 export const suggestionsUntilSelected = "Suggestions until you select them.";
 
 export const selectLine = "Choose what belongs in the issue.";

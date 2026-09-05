@@ -1,16 +1,19 @@
 import { keepNeedsUrl } from "../copy";
+import type { ClaimSource } from "./article";
 import {
   relatedFail,
   relatedPersist,
   runRelatedReporting,
+  type RelatedJudgeFn,
   type RelatedPage,
   type RelatedRailFail,
   type RelatedRailRecord,
 } from "./related";
 import { runGrokRelatedQueries, type RelatedSearchStringsFn } from "./related-queries";
+import { runGrokRelatedStance, type RelatedStanceFn } from "./related-stance";
 import { resolveSearchPages, type SearchPages } from "./search";
 import {
-  runSourceHeadline,
+  runKeepSource,
   sourceHeadlineFail,
   sourceHeadlineRecord,
   type SourceHeadlineFound,
@@ -19,6 +22,7 @@ import {
 import {
   runGrokUnderstanding,
   understandingFail,
+  type UnderstandInput,
   type Understanding,
   type UnderstandingRecord,
 } from "./understanding";
@@ -43,10 +47,13 @@ export type ClipStore = {
 };
 
 export type SaveOptions = {
-  understand?: (input: { url: string }) => Promise<Understanding>;
+  understand?: (input: UnderstandInput) => Promise<Understanding>;
   searchPages?: SearchPages;
   searchStrings?: RelatedSearchStringsFn;
+  judge?: RelatedJudgeFn;
+  labelStance?: RelatedStanceFn;
   readHeadline?: (input: { url: string }) => Promise<SourceHeadlineFound>;
+  readSource?: (input: { url: string }) => Promise<{ found: SourceHeadlineFound; source: ClaimSource }>;
 };
 
 function newId() {
@@ -64,9 +71,10 @@ function emptyClipFields() {
 
 /**
  * Keep always saves. Persist first, then a source headline from the fetch,
- * then one Grok understanding, then two short search strings, then the search rail.
- * If the two strings are missing, the rail falls back to the topic query.
- * Headline, Grok-string, and search failure do not fail Keep. PROTOCOL §3 / §4 / §9.
+ * then one Grok understanding grounded in source text, then claim-driven
+ * search strings, then the search rail, then one bounded Grok judge.
+ * Missing claims prefer an empty rail over entity-junk.
+ * Headline, understanding, Grok-string, search, and judge failure do not fail Keep.
  */
 export async function saveClip(
   input: { url: string },
@@ -86,10 +94,19 @@ export async function saveClip(
   });
 
   let headline: SourceHeadlineRecord | null = null;
+  let source: ClaimSource | undefined;
   try {
-    headline = options?.readHeadline
-      ? sourceHeadlineRecord(await options.readHeadline({ url: clip.url }))
-      : await runSourceHeadline({ url: clip.url });
+    if (options?.readSource) {
+      const keep = await options.readSource({ url: clip.url });
+      source = keep.source;
+      headline = sourceHeadlineRecord(keep.found);
+    } else if (options?.readHeadline) {
+      headline = sourceHeadlineRecord(await options.readHeadline({ url: clip.url }));
+    } else {
+      const keep = await runKeepSource({ url: clip.url });
+      source = keep.source;
+      headline = sourceHeadlineRecord(keep.found);
+    }
     await store.persistSourceHeadline(clip.id, headline);
   } catch (error) {
     headline = sourceHeadlineFail(error);
@@ -103,7 +120,7 @@ export async function saveClip(
   const understand = options?.understand ?? runGrokUnderstanding;
   let record: UnderstandingRecord | null = null;
   try {
-    const understood = await understand({ url: clip.url });
+    const understood = await understand({ url: clip.url, source });
     record = { status: "ok", ...understood };
     await store.persistUnderstanding(clip.id, record);
   } catch (error) {
@@ -117,13 +134,16 @@ export async function saveClip(
 
   const searchPages = options?.searchPages ?? resolveSearchPages();
   const searchStrings = options?.searchStrings ?? runGrokRelatedQueries;
+  const judge = options?.judge ?? options?.labelStance ?? runGrokRelatedStance;
   let related: RelatedRailRecord | null = null;
   try {
     related = await runRelatedReporting({
       url: clip.url,
       topic: record?.status === "ok" ? record : null,
+      headline: headline?.status === "ok" ? headline.text : undefined,
       searchPages,
       searchStrings,
+      judge,
     });
   } catch (error) {
     related = relatedFail(error);

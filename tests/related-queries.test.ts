@@ -15,6 +15,7 @@ const topic = {
   topic: "A harbour vote",
   entities: ["Praia"],
   date: "2026-09-01",
+  centralClaim: "The harbour vote should carry",
 };
 
 describe("Grok related search strings are not search", () => {
@@ -33,6 +34,8 @@ describe("Grok related search strings are not search", () => {
     expect(Object.keys(relatedQueryJsonSchema.properties)).toEqual(["comparable", "contrarian"]);
     expect(body).toMatch(/must not call web_search/);
     expect(relatedQuerySystemPrompt).toMatch(/two short search strings/i);
+    expect(relatedQuerySystemPrompt).toMatch(/central claim/i);
+    expect(request.messages[1]?.content).toMatch(/The harbour vote should carry/);
     expect(relatedQuerySystemPrompt).toMatch(/must not search/i);
     expect(relatedQuerySystemPrompt).toMatch(/must not pick URLs/i);
     expect(relatedQuerySystemPrompt).toMatch(/must not invent related pages/i);

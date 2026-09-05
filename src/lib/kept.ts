@@ -77,6 +77,7 @@ export function relatedRow(page: RelatedPage) {
     host,
     snippet,
     detail: snippet ? "" : [host, date].filter(Boolean).join(" · "),
+    ...(page.stance ? { stance: page.stance } : {}),
   };
 }
 

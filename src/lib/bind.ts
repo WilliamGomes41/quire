@@ -13,12 +13,14 @@ import {
   type FigureKind,
 } from "./article";
 import { chosenFromBoard, type BindChoice, type BoardItem, type ChosenPiece } from "./select";
+import { isRelatedStance, type RelatedStance } from "./related";
 import type { Clip } from "./save";
 import { runGrokTake, takeFail, type TakeRecord } from "./take";
 
 export type BoundPiece = {
   url: string;
   role: "original" | "related";
+  stance?: RelatedStance;
   headline: string;
   paragraphs: string[];
   figure?: string;
@@ -71,6 +73,18 @@ function topicsFromBoard(items: BoardItem[]) {
   return topics;
 }
 
+function stancesFromBoard(items: BoardItem[]) {
+  const stances = new Map<string, RelatedStance>();
+  for (const item of items) {
+    for (const page of item.clip.relatedReporting ?? []) {
+      if (!page.stance) continue;
+      const key = canonicalizeUrl(page.url);
+      if (key) stances.set(key, page.stance);
+    }
+  }
+  return stances;
+}
+
 export function readOwnedPieceFields(rec: Record<string, unknown>): Partial<BoundPiece> {
   const text = (value: unknown, max = 400) =>
     typeof value === "string" && value.trim() ? value.trim().slice(0, max) : "";
@@ -87,6 +101,7 @@ export function readOwnedPieceFields(rec: Record<string, unknown>): Partial<Boun
   const published = text(rec.published, 40);
   const videoUrl =
     typeof rec.videoUrl === "string" && isPublicHttpUrl(rec.videoUrl.trim()) ? rec.videoUrl.trim() : "";
+  const stance = rec.role === "related" && isRelatedStance(rec.stance) ? rec.stance : undefined;
   const strings = (value: unknown, max = 8) =>
     Array.isArray(value)
       ? value.filter((item): item is string => typeof item === "string" && item.trim() !== "").slice(0, max)
@@ -111,6 +126,7 @@ export function readOwnedPieceFields(rec: Record<string, unknown>): Partial<Boun
     ...(figure ? { figure } : {}),
     ...(coverLine ? { coverLine } : {}),
     ...(topic ? { topic } : {}),
+    ...(stance ? { stance } : {}),
     ...(figureCaption ? { figureCaption } : {}),
     ...(figureCredit ? { figureCredit } : {}),
     ...(figureKind ? { figureKind } : {}),
@@ -213,6 +229,7 @@ export async function createIssue(
   const fetched = await Promise.all(chosen.map((piece) => wordsFor(piece, fetchWords)));
   const pieces = fetched.filter((piece): piece is BoundPiece => piece !== null);
   const topics = topicsFromBoard(items);
+  const stances = stancesFromBoard(items);
 
   const seen = new Set<string>();
   const locked: BoundPiece[] = [];
@@ -220,7 +237,12 @@ export async function createIssue(
     if (seen.has(piece.url)) continue;
     seen.add(piece.url);
     const topic = topics.get(canonicalizeUrl(piece.url));
-    locked.push(topic ? { ...piece, topic } : piece);
+    const stance = piece.role === "related" ? stances.get(canonicalizeUrl(piece.url)) : undefined;
+    locked.push({
+      ...piece,
+      ...(topic ? { topic } : {}),
+      ...(stance ? { stance } : {}),
+    });
   }
 
   const lead = leadPiece(locked);

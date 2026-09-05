@@ -10,9 +10,9 @@ For people who like to keep articles for calm later reading. Paste a URL. It sta
 
 ## This slice
 
-Keep always saves. A clip is written first. Then one Grok understanding (content type, topic, entities, optional date). Grok only structures the topic. It does not search or pick URLs.
+Keep always saves. A clip is written first. Then one Grok understanding grounded in source text (headline, snippet/description, cleaned body ~8–15k): content type, topic, entities, optional date, `centralClaim`, and up to two `supportingClaims`. URL-only is insufficient for claims. Grok only structures. It does not search or pick URLs. Missing or limited claims still leave the clip saved.
 
-Then the More on this topic rail. Grok structures two short search strings from that understanding: comparable and contrarian. It does not search, pick URLs, or invent related pages. Retrieval is a provider slot: one dedicated search API behind a function/config. That API (Brave) runs both queries. If Grok does not produce the two strings, the rail falls back to the topic-based query (topic + remaining entities + date — not keep-host / author-looking tokens). Empty topic falls back without the raw URL host. The app merges, normalizes (Wikipedia hosts — any language or mobile `*.wikipedia.org` — are dropped), dedupes, ranks, drops pages with zero token overlap, and persists at most five `related_reporting`. Fewer results beat junk. Zero good hits after the filter is `ok`+0 (`nothingMoreOnTopic`), not fail. Wikipedia must never appear on More on this topic.
+Then the More on this topic rail. Relevance is claim-first. Grok structures two short search strings from the central claim (entities as context only). It does not search, pick URLs, or invent related pages. If claims failed or are limited, the rail stays empty or small — not an entity-first junk fill. Retrieval is a provider slot: one dedicated search API behind a function/config. That API (Brave) runs both queries (~40 raw). If Grok does not produce the two strings, the rail falls back to a claim query, not topic+entities. The app normalizes (Wikipedia hosts — any language or mobile `*.wikipedia.org` — are dropped), dedupes, cheap-preselects ~12 by claim tokens, then one bounded Grok judge (relevance `direct|contextual|irrelevant|uncertain`, optional stance `comparable|contrarian|inconclusive`). Irrelevant drops. Persist at most five `related_reporting` with stance when judged. Fewer results beat junk. Zero good hits after the filter is `ok`+0 (`nothingMoreOnTopic`), not fail. Wikipedia must never appear on More on this topic. Stance labels: Other reporting / A contrasting angle / Could not place. Absent rows are deterministic after labels, never a Grok URL.
 
 Keep and Select are a desk on paper `#FAF7F1`. A modest Source Serif site masthead sits above the desk. Keep paste is the left rail — one paste, not a form stack. Select is the keep board on the right. The tile heading is the stored source headline when Keep could read one, in Source Serif at board scale — not the Read cover display. A stored source figure leads that card when Keep already has one; a keep without a figure stays type-led. No invented photos or sample copy. Host and topic stay secondary. Source is the leaving control. A source-owned snippet sits under the headline. Photographs contain. Remove takes a clip off the pile. Related stay collapsed as More on this topic + tally; selected stay visible. The Select board is a two-column paper pile on a wide viewport, with one Create issue for the board. Empty selection does not bind. The board is not a dark stage and not a floating sheet — those stay on Read.
 
@@ -24,11 +24,11 @@ A bound-issue card has quiet Remove, same register as Select. Deleting asks whet
 
 Search failure, understanding failure, a failed take, or a failed bind do not fail Keep.
 
-Canonical law lives in [quire-bind PROTOCOL.md @ 444e429](https://github.com/WilliamGomes41/quire-bind/blob/444e4299778d0297a889675426e45f87a66fb88f/PROTOCOL.md) (v0.8.3). Do not treat this README as PROTOCOL.
+Canonical law lives in [quire-bind PROTOCOL.md @ 3fa358c](https://github.com/WilliamGomes41/quire-bind/blob/3fa358c/PROTOCOL.md) (v0.8.3 living, claim-first). Stance meanings: [f96b051](https://github.com/WilliamGomes41/quire-bind/blob/f96b051/PROTOCOL.md). Do not treat this README as PROTOCOL.
 
 ## Stack
 
-TanStack Start, Better Auth, PGLite (or Postgres/Neon when `DATABASE_URL` is set), xAI `grok-4.6` for Keep understanding, two related search strings, and the optional take, one dedicated search API in the retrieval slot.
+TanStack Start, Better Auth, PGLite (or Postgres/Neon when `DATABASE_URL` is set), xAI `grok-4.6` for Keep understanding, two related search strings, one rail judge, and the optional take, one dedicated search API in the retrieval slot.
 
 ## Develop
 

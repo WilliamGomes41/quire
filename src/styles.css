@@ -305,7 +305,23 @@ nav {
 .rail li .note {
   margin: 0;
   font-size: 0.82rem;
+  font-family: var(--font-sans);
   color: color-mix(in srgb, var(--ink) 62%, var(--paper));
+}
+
+.rail li .stance {
+  margin: 0;
+  font-size: 0.82rem;
+  font-family: var(--font-sans);
+  color: var(--muted);
+}
+
+.rail li .stance.quiet {
+  color: color-mix(in srgb, var(--ink) 42%, var(--paper));
+}
+
+.rail ul.absent {
+  margin-top: 0.7rem;
 }
 
 .board {
@@ -488,7 +504,9 @@ button.related-title {
   padding: 0;
   text-align: left;
   width: auto;
-  font: inherit;
+  font-family: var(--font-serif);
+  font-weight: inherit;
+  font-size: inherit;
 }
 
 .actions {
@@ -831,6 +849,16 @@ button.toc-row:hover {
   font-family: var(--font-serif);
   font-size: 1.45rem;
   line-height: 1.15;
+}
+
+.toc-absent {
+  margin: 0;
+  padding: 1.15rem 0;
+  border-bottom: 1px solid var(--rule);
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.35;
+  color: var(--muted);
 }
 
 .toc-dots {

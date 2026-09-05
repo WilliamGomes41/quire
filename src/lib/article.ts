@@ -325,6 +325,58 @@ export function videoFromHtml(html: string, baseUrl: string) {
   return "";
 }
 
+export const CLAIM_BODY_MIN = 80;
+export const CLAIM_BODY_MAX = 12_000;
+
+export type ClaimSource = {
+  headline?: string;
+  snippet?: string;
+  description?: string;
+  body?: string;
+};
+
+/** Headline or snippet plus a cleaned body. URL-only is not enough for claims. */
+export function claimSourceReady(source?: ClaimSource | null) {
+  if (!source) return false;
+  const head = compactText(source.headline || source.snippet || source.description, 500);
+  const body = compactText(source.body, CLAIM_BODY_MAX);
+  return Boolean(head && body.length >= CLAIM_BODY_MIN);
+}
+
+export function claimSourceText(source: ClaimSource) {
+  const headline = compactText(source.headline, 400);
+  const snippet = compactText(source.snippet || source.description, 1000);
+  const body = compactText(source.body, CLAIM_BODY_MAX);
+  return [headline && `headline: ${headline}`, snippet && `snippet: ${snippet}`, body && `body: ${body}`]
+    .filter(Boolean)
+    .join("\n");
+}
+
+/** Source-owned text for claim understanding. Never invented. */
+export function extractClaimSource(html: string, url = ""): ClaimSource {
+  const words = (() => {
+    try {
+      return extractArticleWords(html, url);
+    } catch {
+      return null;
+    }
+  })();
+  const cleaned = html
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript[\s\S]*?<\/noscript>/gi, " ");
+  const headline = words?.headline || headlineFrom(cleaned);
+  const description = metaContent(cleaned, "og:description", 1000) || metaContent(cleaned, "description", 1000);
+  const snippet = words?.paragraphs[0] || description;
+  const body = compactText((words?.paragraphs ?? []).join(" "), CLAIM_BODY_MAX);
+  return {
+    ...(headline ? { headline } : {}),
+    ...(snippet ? { snippet } : {}),
+    ...(description ? { description } : {}),
+    ...(body ? { body } : {}),
+  };
+}
+
 export function extractArticleWords(html: string, url: string): ArticleWords {
   const cleaned = html
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
