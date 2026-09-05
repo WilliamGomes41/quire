@@ -115,6 +115,25 @@ describe("paper badge from stored understanding", () => {
     ).toBe("Notice");
   });
 
+  it("shows the mark on a claim-limited ok understanding, never gated on centralClaim", () => {
+    const bubista = {
+      status: "ok" as const,
+      contentType: "Comment" as const,
+      topic: "Intelligence",
+      entities: ["Bubista", "William Gomes"],
+    };
+    expect(paperBadgeLabel(bubista)).toBe("Opinion");
+    expect(bubista).not.toHaveProperty("centralClaim");
+    expect(
+      paperBadgeLabel({
+        status: "ok",
+        contentType: "News",
+        topic: "",
+        entities: [],
+      }),
+    ).toBe("News");
+  });
+
   it("has no badge when understanding is missing or failed", () => {
     expect(paperBadgeLabel(null)).toBeNull();
     expect(paperBadgeLabel(undefined)).toBeNull();

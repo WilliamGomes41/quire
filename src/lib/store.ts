@@ -45,7 +45,7 @@ export async function clipStore(): Promise<ClipStore> {
       return clipFromRow(row);
     },
     async persistUnderstanding(id: string, record: UnderstandingRecord) {
-      await db.query("update clips set understanding = $2 where id = $1", [id, record]);
+      await db.query("update clips set understanding = $2 where id = $1", [id, jsonValue(record)]);
     },
     async persistRelated(id: string, record: RelatedRailRecord) {
       const write = relatedPersist(record);

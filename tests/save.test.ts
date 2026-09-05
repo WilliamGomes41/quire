@@ -3,6 +3,7 @@ import { resetMemoryDb } from "../src/lib/db";
 import { relatedPersist, type RelatedRailRecord } from "../src/lib/related";
 import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
 import { clipStore, listClips } from "../src/lib/store";
+import { paperBadgeLabel } from "../src/lib/kept";
 import type { Understanding, UnderstandingRecord } from "../src/lib/understanding";
 
 function memoryStore(): ClipStore & { rows: Map<string, Clip> } {
@@ -135,6 +136,27 @@ describe("Keep always saves", () => {
     expect(stored?.understanding).toEqual({ status: "ok", ...understood });
   });
 
+  it("persists claim-limited contentType through PGLite so the Desk mark remains", async () => {
+    const store = await clipStore();
+    const clip = await saveClip({ url: "https://williamgomes1.substack.com/p/note" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "Comment",
+        topic: "Intelligence",
+        entities: ["Bubista", "William Gomes"],
+      }),
+      searchPages: quietSearch,
+    });
+    const stored = await store.get(clip.id);
+    expect(stored?.understanding).toEqual({
+      status: "ok",
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista", "William Gomes"],
+    });
+    expect(paperBadgeLabel(stored?.understanding)).toBe("Opinion");
+  });
+
   it("persists through PGLite when understanding throws, with a fail record", async () => {
     const store = await clipStore();
     const clip = await saveClip({ url: "https://example.com/pglite" }, store, {
@@ -199,6 +221,39 @@ describe("Keep always saves", () => {
     expect(queries).toEqual([]);
     expect(limited.relatedRail).toEqual({ status: "ok" });
     expect(limited.relatedReporting).toEqual([]);
+    expect(limited.understanding).toEqual({
+      status: "ok",
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista", "William Gomes"],
+    });
+    expect(paperBadgeLabel(limited.understanding)).toBe("Opinion");
+    expect(store.rows.get(limited.id)?.understanding).toEqual(limited.understanding);
+  });
+
+  it("does not rewrite an ok characterization as fail when persist throws", async () => {
+    const store = memoryStore();
+    store.persistUnderstanding = async () => {
+      throw new Error("diagnostic write failed");
+    };
+    const clip = await saveClip({ url: "https://example.com/keep-type" }, store, {
+      readHeadline: quietHeadline,
+      understand: async () => ({
+        contentType: "Comment",
+        topic: "Intelligence",
+        entities: ["Bubista"],
+      }),
+      searchPages: quietSearch,
+    });
+    expect(store.rows.has(clip.id)).toBe(true);
+    expect(clip.understanding).toEqual({
+      status: "ok",
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista"],
+    });
+    expect(paperBadgeLabel(clip.understanding)).toBe("Opinion");
+    expect(clip.understanding?.status).not.toBe("failed");
   });
 
   it("still keeps when default Grok understanding cannot run", async () => {

@@ -3,8 +3,10 @@ import { extractClaimSource, claimSourceReady } from "../src/lib/article";
 import { grokModel } from "../src/lib/model";
 import {
   buildUnderstandingRequest,
+  characterizationJsonSchema,
   contentTypes,
   parseUnderstanding,
+  readUnderstanding,
   runGrokUnderstanding,
   understandingJsonSchema,
   understandingSystemPrompt,
@@ -36,6 +38,16 @@ describe("understanding schema", () => {
       "centralClaim",
       "supportingClaims",
     ]);
+    expect(characterizationJsonSchema.required).toEqual([
+      "contentType",
+      "topic",
+      "entities",
+      "date",
+    ]);
+    expect(characterizationJsonSchema.properties).not.toHaveProperty("centralClaim");
+    expect(characterizationJsonSchema.properties).not.toHaveProperty("supportingClaims");
+    expect(understandingJsonSchema.properties.topic).toEqual({ type: ["string", "null"] });
+    expect(characterizationJsonSchema.properties.topic).toEqual({ type: ["string", "null"] });
 
     expect(
       parseUnderstanding({
@@ -68,6 +80,21 @@ describe("understanding schema", () => {
       contentType: "Comment",
       topic: "A column on reading",
       entities: [],
+    });
+
+    expect(
+      parseUnderstanding({
+        contentType: "Comment",
+        topic: "Intelligence",
+        entities: ["Bubista", "William Gomes"],
+        date: null,
+        centralClaim: "",
+        supportingClaims: [],
+      }),
+    ).toEqual({
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista", "William Gomes"],
     });
   });
 
@@ -102,16 +129,76 @@ describe("understanding schema", () => {
     });
   });
 
+  it("keeps contentType when topic or claims are empty, limited, or missing", () => {
+    expect(
+      parseUnderstanding({
+        contentType: "Comment",
+        topic: null,
+        entities: ["Bubista"],
+        date: "2026-09-01",
+        centralClaim: null,
+        supportingClaims: [],
+      }),
+    ).toEqual({
+      contentType: "Comment",
+      topic: "",
+      entities: ["Bubista"],
+      date: "2026-09-01",
+    });
+    expect(
+      parseUnderstanding({
+        contentType: "Study",
+        entities: ["A"],
+      }),
+    ).toEqual({
+      contentType: "Study",
+      topic: "",
+      entities: ["A"],
+    });
+    expect(
+      parseUnderstanding({
+        contentType: "Notice",
+        topic: "A harbour closure",
+        entities: "no",
+      }),
+    ).toEqual({
+      contentType: "Notice",
+      topic: "A harbour closure",
+      entities: [],
+    });
+  });
+
   it("rejects a shape that is not the Keep understanding record", () => {
     expect(() =>
       parseUnderstanding({ contentType: "Essay", topic: "x", entities: [] }),
     ).toThrow(/News, Comment, Study, or Notice/);
-    expect(() =>
-      parseUnderstanding({ contentType: "Study", entities: ["A"] }),
-    ).toThrow(/topic/);
-    expect(() =>
-      parseUnderstanding({ contentType: "Notice", topic: "x", entities: "no" }),
-    ).toThrow(/entities/);
+    expect(() => parseUnderstanding({ topic: "x", entities: [] })).toThrow(
+      /News, Comment, Study, or Notice/,
+    );
+  });
+
+  it("reads an ok characterization even when stored claims are missing", () => {
+    expect(
+      readUnderstanding({
+        status: "ok",
+        contentType: "Comment",
+        topic: "Intelligence",
+        entities: ["Bubista"],
+      }),
+    ).toEqual({
+      status: "ok",
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista"],
+    });
+    expect(
+      readUnderstanding({
+        status: "ok",
+        contentType: "Essay",
+        topic: "x",
+        entities: [],
+      }),
+    ).toBeNull();
   });
 });
 
@@ -135,6 +222,7 @@ describe("Grok does not search", () => {
     expect(understandingSystemPrompt).toMatch(/must not pick URLs/i);
     expect(understandingSystemPrompt).toMatch(/must not call web_search/i);
     expect(understandingSystemPrompt).toMatch(/centralClaim/);
+    expect(understandingSystemPrompt).toMatch(/Content type and topic remain/);
     expect(request.messages[1]).toEqual({
       role: "user",
       content: understandingUserContent({ url: "https://example.com/kept", source: harbourSource }),
@@ -221,6 +309,86 @@ describe("Grok does not search", () => {
       /insufficient for claim extraction/,
     );
   });
+
+  it("asks only for characterization when claim source is insufficient", () => {
+    const limited = buildUnderstandingRequest({ url: "https://williamgomes1.substack.com/p/note" });
+    expect(limited.response_format.json_schema.schema).toEqual(characterizationJsonSchema);
+    expect(limited.response_format.json_schema.schema).not.toEqual(understandingJsonSchema);
+    expect(limited.response_format.json_schema.schema.required).not.toContain("centralClaim");
+
+    const ready = buildUnderstandingRequest({
+      url: "https://example.com/kept",
+      source: harbourSource,
+    });
+    expect(ready.response_format.json_schema.schema).toEqual(understandingJsonSchema);
+  });
+
+  it("keeps Bubista-class contentType when Grok returns no claims", async () => {
+    const understood = await runGrokUnderstanding(
+      { url: "https://williamgomes1.substack.com/p/over-intelligentie" },
+      {
+        apiKey: "test-key",
+        post: async (_url, init) => {
+          const body = JSON.parse(init.body) as {
+            response_format: { json_schema: { schema: unknown } };
+          };
+          expect(body.response_format.json_schema.schema).toEqual(characterizationJsonSchema);
+          return new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: JSON.stringify({
+                      contentType: "Comment",
+                      topic: "Intelligence",
+                      entities: ["Bubista", "William Gomes"],
+                      date: null,
+                    }),
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          );
+        },
+      },
+    );
+    expect(understood).toEqual({
+      contentType: "Comment",
+      topic: "Intelligence",
+      entities: ["Bubista", "William Gomes"],
+    });
+
+    const objectContent = await runGrokUnderstanding(
+      { url: "https://williamgomes1.substack.com/p/note" },
+      {
+        apiKey: "test-key",
+        post: async () =>
+          new Response(
+            JSON.stringify({
+              choices: [
+                {
+                  message: {
+                    content: {
+                      contentType: "Comment",
+                      topic: null,
+                      entities: ["Bubista"],
+                      date: null,
+                    },
+                  },
+                },
+              ],
+            }),
+            { status: 200 },
+          ),
+      },
+    );
+    expect(objectContent).toEqual({
+      contentType: "Comment",
+      topic: "",
+      entities: ["Bubista"],
+    });
+  });
 });
 
 describe("Grok request still has no search after the rail", () => {
@@ -230,6 +398,7 @@ describe("Grok request still has no search after the rail", () => {
     expect(request).not.toHaveProperty("search_parameters");
     expect(request).not.toHaveProperty("web_search");
     expect(Object.keys(request)).toEqual(["model", "messages", "response_format"]);
+    expect(request.response_format.json_schema.schema).toEqual(characterizationJsonSchema);
   });
 });
 
