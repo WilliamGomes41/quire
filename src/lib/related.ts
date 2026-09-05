@@ -186,8 +186,6 @@ const hostNoise = new Set([
   "hashnode",
 ]);
 
-const pathNoise = new Set(["p", "posts", "post", "article", "articles", "blog", "news", "index", "amp", "html"]);
-
 /** Author-looking tokens from the keep hostname. williamgomes1.substack.com → williamgomes. */
 function hostAuthorTokens(url: string) {
   const junk = new Set<string>();
@@ -263,22 +261,6 @@ export function claimText(topic?: Understanding | null, keepUrl = "") {
   const junk = keepUrl ? hostAuthorTokens(keepUrl) : new Set<string>();
   const { central, supporting } = remainingClaims(topic, junk);
   return compact([central, ...supporting].filter(Boolean).join(" "), 800);
-}
-
-/** Path words only. Never the keep host. */
-function pathFallback(url: string, junk: Set<string>) {
-  let path = "";
-  try {
-    path = new URL(url).pathname;
-  } catch {
-    return "";
-  }
-  const parts = path
-    .split("/")
-    .flatMap((part) => part.replace(/\.[a-z0-9]+$/i, "").split(/[-_]+/))
-    .map((part) => part.trim())
-    .filter((part) => part.length > 2 && !pathNoise.has(part.toLowerCase()));
-  return compact(parts.filter((part) => !looksLikeHostAuthor(part, junk)).join(" "), 320);
 }
 
 function wantedTokens(keepUrl: string, topic?: Understanding | null) {
@@ -551,9 +533,11 @@ export async function runRelatedReporting(input: {
       topic: input.topic,
       headline: input.headline,
     });
+    const allowed = new Set(preselected.map((page) => canonicalizeUrl(page.url)).filter(Boolean));
+    const kept = judged.filter((page) => allowed.has(canonicalizeUrl(page.url)));
     return {
       status: "ok",
-      related_reporting: judged.slice(0, RELATED_REPORTING_MAX).map(pageFields),
+      related_reporting: kept.slice(0, RELATED_REPORTING_MAX).map(pageFields),
     };
   } catch {
     // Label fail is not ok+0 and not could-not-look. Pages stay unlabeled.
