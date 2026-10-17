@@ -11,8 +11,8 @@
   "dependencies": {
     "@electric-sql/pglite": "^0.3.15",
     "@pdf-lib/fontkit": "^1.1.1",
-    "@tanstack/react-router": "^1.157.16",
-    "@tanstack/react-start": "^1.157.16",
+    "@tanstack/react-router": "1.170.42",
+    "@tanstack/react-start": "1.168.61",
     "better-auth": "^1.3.13",
     "pdf-lib": "^1.17.1",
     "postgres": "^3.4.7",
@@ -28,6 +28,6 @@
     "nitro": "^3.0.260610-beta",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
-    "vitest": "^3.2.4"
+    "vitest": "^5.0.5"
   }
 }

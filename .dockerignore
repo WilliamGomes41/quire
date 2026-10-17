@@ -1,0 +1,11 @@
+node_modules
+.output
+.git
+.github
+.env
+.env.*
+!.env.example
+*.local
+*.local.md
+.pglite
+coverage

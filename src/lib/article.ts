@@ -4,6 +4,7 @@
  */
 
 import { couldNotFetchWords } from "../copy";
+import { readCappedText, safeFetch } from "./safe-fetch";
 
 export type FigureKind = "photo" | "diagram" | "chart";
 
@@ -429,18 +430,18 @@ export async function fetchArticleWords(
     typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
       ? AbortSignal.timeout(timeoutMs)
       : undefined;
-  const get = deps?.get ?? fetch;
-  const response = await get(url, {
+  const init = {
     method: "GET",
     headers: {
       Accept: "text/html,application/xhtml+xml",
     },
     signal,
-  });
+  };
+  const response = deps?.get ? await deps.get(url, init) : await safeFetch(url, init);
   if (!response.ok) {
     throw new Error(`${couldNotFetchWords} (${response.status})`);
   }
-  const html = await response.text();
+  const html = await readCappedText(response);
   const words = extractArticleWords(html, url);
   if (words.paragraphs.length === 0) {
     throw new Error(couldNotFetchWords);
