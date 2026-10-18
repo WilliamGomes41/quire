@@ -21,6 +21,7 @@ import {
   removeLabel,
   removePiecesTooLabel,
   returnToDeskLabel,
+  signOutLabel,
   sourceHeadlineCopy,
   sourceLabel,
 } from "../copy";
@@ -36,6 +37,7 @@ import {
   relatedRow,
   relatedVisible,
 } from "../lib/kept";
+import { authClient } from "../lib/auth-client";
 import { saveClip, type Clip } from "../lib/save";
 import { chosenFromBoard, chosenPieces, defaultBindChoice, type BindChoice } from "../lib/select";
 import {
@@ -136,7 +138,13 @@ function Home() {
           <strong className="site-masthead">
             <QuireMark />
           </strong>
-          <Link to="/login">Owner sign in</Link>
+          <button
+            type="button"
+            className="quiet"
+            onClick={() => authClient.signOut().finally(() => window.location.assign("/login"))}
+          >
+            {signOutLabel}
+          </button>
         </nav>
       </header>
 

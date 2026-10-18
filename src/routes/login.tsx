@@ -25,7 +25,11 @@ function Login() {
           const email = String(form.get("email") ?? "");
           const password = String(form.get("password") ?? "");
           authClient.signIn.email({ email, password }).then((result) => {
-            setMessage(result.error?.message ?? "Signed in.");
+            if (result.error) {
+              setMessage(result.error.message ?? "Could not sign in.");
+              return;
+            }
+            window.location.assign("/");
           });
         }}
       >

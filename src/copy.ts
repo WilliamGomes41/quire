@@ -80,6 +80,8 @@ export const returnToDeskLabel = "Return the pieces to Desk.";
 
 export const removePiecesTooLabel = "Remove the pieces too.";
 
+export const signOutLabel = "Sign out";
+
 export const pressLabel = "Press";
 
 export const pressEmpty = "Nothing in the library yet.";

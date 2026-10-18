@@ -1,5 +1,5 @@
 import { keepNeedsUrl } from "../copy";
-import type { ClaimSource } from "./article";
+import { isPublicHttpUrl, type ClaimSource } from "./article";
 import {
   relatedFail,
   relatedPersist,
@@ -56,6 +56,9 @@ export type SaveOptions = {
   readSource?: (input: { url: string }) => Promise<{ found: SourceHeadlineFound; source: ClaimSource }>;
 };
 
+/** Longer than any real article URL; keeps junk out of the store. */
+export const KEEP_URL_MAX = 2048;
+
 function newId() {
   return crypto.randomUUID();
 }
@@ -82,7 +85,7 @@ export async function saveClip(
   options?: SaveOptions,
 ): Promise<Clip> {
   const url = input.url.trim();
-  if (!url) {
+  if (!url || url.length > KEEP_URL_MAX || !isPublicHttpUrl(url)) {
     throw new Error(keepNeedsUrl);
   }
 

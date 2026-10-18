@@ -13,6 +13,7 @@ import type { BoundIssue } from "./bind";
 import { composeIssue, type PagePlan } from "./compose";
 import { paperBox, printPlan, type PaperName, type PrintSheet } from "./print";
 import { qrMatrix } from "./qr";
+import { IMAGE_MAX_BYTES, readCapped, safeFetch } from "./safe-fetch";
 
 const PAPER = rgb(250 / 255, 247 / 255, 241 / 255);
 const INK = rgb(28 / 255, 24 / 255, 20 / 255);
@@ -427,9 +428,9 @@ async function drawFigure(book: Book, url: string, folio: string, caption?: stri
 async function tryEmbed(doc: PDFDocument, url: string): Promise<PDFImage | null> {
   if (!/^https:\/\//i.test(url)) return null;
   try {
-    const response = await fetch(url, { signal: AbortSignal.timeout(3500) });
+    const response = await safeFetch(url, { signal: AbortSignal.timeout(3500) });
     if (!response.ok) return null;
-    const bytes = new Uint8Array(await response.arrayBuffer());
+    const bytes = await readCapped(response, IMAGE_MAX_BYTES);
     const kind = response.headers.get("content-type") ?? "";
     if (kind.includes("png") || bytes[0] === 0x89) return doc.embedPng(bytes);
     return doc.embedJpg(bytes);

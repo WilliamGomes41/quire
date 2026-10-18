@@ -1,4 +1,4 @@
-import { PGlite } from "@electric-sql/pglite";
+import type { PGlite } from "@electric-sql/pglite";
 
 export type Queryable = {
   query: (
@@ -43,13 +43,40 @@ create table if not exists issues (
 );
 `;
 
-let memory: PGlite | null = null;
+const schema = [
+  createClips,
+  addUnderstanding,
+  addRelatedRail,
+  addRelatedReporting,
+  addSourceHeadline,
+  createIssues,
+];
 
-export async function openDb(): Promise<Queryable> {
+/** Postgres pool size. One reader; a few connections cover the parallel loads. */
+const poolMax = 5;
+
+let memory: PGlite | null = null;
+let opening: Promise<Queryable> | null = null;
+
+/**
+ * One client per process, schema applied once.
+ * Postgres/Neon when DATABASE_URL is set, else in-memory PGLite.
+ */
+export function openDb(): Promise<Queryable> {
+  if (!opening) {
+    opening = connect().catch((error) => {
+      opening = null;
+      throw error;
+    });
+  }
+  return opening;
+}
+
+async function connect(): Promise<Queryable> {
   const url = process.env.DATABASE_URL;
   if (url) {
     const { default: postgres } = await import("postgres");
-    const sql = postgres(url, { max: 1 });
+    const sql = postgres(url, { max: poolMax, onnotice: () => {} });
     const queryable: Queryable = {
       async query(text, params = []) {
         const rows = (await sql.unsafe(text, params as never[])) as unknown as Record<
@@ -59,24 +86,21 @@ export async function openDb(): Promise<Queryable> {
         return { rows };
       },
     };
-    await queryable.query(createClips);
-    await queryable.query(addUnderstanding);
-    await queryable.query(addRelatedRail);
-    await queryable.query(addRelatedReporting);
-    await queryable.query(addSourceHeadline);
-    await queryable.query(createIssues);
+    for (const statement of schema) {
+      await queryable.query(statement);
+    }
     return queryable;
   }
 
   if (!memory) {
+    const { PGlite } = await import("@electric-sql/pglite");
     memory = new PGlite();
-    await memory.exec(
-      `${createClips}${addUnderstanding}${addRelatedRail}${addRelatedReporting}${addSourceHeadline}${createIssues}`,
-    );
+    await memory.exec(schema.join(""));
   }
+  const db = memory;
   return {
     async query(text, params = []) {
-      const result = await memory!.query<Record<string, unknown>>(text, params);
+      const result = await db.query<Record<string, unknown>>(text, params);
       return { rows: result.rows };
     },
   };
@@ -84,4 +108,5 @@ export async function openDb(): Promise<Queryable> {
 
 export function resetMemoryDb() {
   memory = null;
+  opening = null;
 }
