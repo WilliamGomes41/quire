@@ -31,7 +31,7 @@ import {
   runGrokRelatedStance,
   slotState,
 } from "../src/lib/related-stance";
-import { saveClip, type Clip, type ClipStore } from "../src/lib/save";
+import { formatKeepTiming, saveClip, type Clip, type ClipStore, type KeepTiming } from "../src/lib/save";
 import { chosenPieces } from "../src/lib/select";
 import { clipStore } from "../src/lib/store";
 
@@ -960,5 +960,39 @@ describe("copy stays in the stereo-rail register", () => {
     expect(contentsAbsentCopy("contrarian")).toBe(contrastingAngleAbsentContents);
     expect(couldNotLook).not.toBe(couldNotPlace);
     expect(couldNotLook).not.toBe(contrastingAngleAbsentRail);
+  });
+});
+
+describe("Keep timing", () => {
+  it("reports how long each step took, once per Keep", async () => {
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const timings: KeepTiming[] = [];
+    await saveClip({ url: "https://example.com/timed" }, memoryClips(), {
+      readHeadline: async () => (await wait(20), { text: "The harbour vote" }),
+      understand: async () => (await wait(20), harbourTopic),
+      searchStrings: async () => (
+        await wait(20), { comparable: "harbour vote Praia", contrarian: "harbour vote opposition" }
+      ),
+      searchPages: async ({ query }) => (
+        await wait(20), [{ url: `https://news.example/${query.length}`, title: "Harbour vote in Praia" }]
+      ),
+      labelStance: async (found) => (await wait(20), found),
+      onTiming: (timing) => timings.push(timing),
+    });
+    expect(timings).toHaveLength(1);
+    const [timing] = timings;
+    expect(timing.url).toBe("https://example.com/timed");
+    for (const step of ["source", "understand", "searchStrings", "judge"] as const) {
+      expect(timing[step]).toBeGreaterThanOrEqual(15);
+    }
+    // Two 20 ms searches run together: wall time, not 40 ms.
+    expect(timing.search).toBeGreaterThanOrEqual(15);
+    expect(timing.search).toBeLessThan(38);
+    expect(timing.total).toBeGreaterThanOrEqual(
+      timing.source + timing.understand + timing.searchStrings + timing.search + timing.judge - 1,
+    );
+    expect(formatKeepTiming(timing)).toMatch(
+      /^keep \d+\.\ds · source \d+\.\ds · understand \d+\.\ds · search strings \d+\.\ds · search \d+\.\ds · judge \d+\.\ds \(example\.com\)$/,
+    );
   });
 });

@@ -136,3 +136,10 @@ export function moreOnThisTopicCopy(input: {
   }
   return { kind: "suggestions" as const, text: moreOnThisTopic };
 }
+
+export const keepProgressCopy = {
+  reading: "Reading the page…",
+  understanding: "Understanding the piece…",
+  related: "Finding more on this topic…",
+  stalled: "This keep stopped before it finished. Remove it and keep it again.",
+} as const;

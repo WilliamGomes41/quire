@@ -661,3 +661,44 @@ describe("related rail stays a search slot, not Grok web_search", () => {
     expect(Object.keys(searchApis)).toEqual(["search_api"]);
   });
 });
+
+describe("search strings run together", () => {
+  const strings = async () => ({ comparable: "harbour vote Praia", contrarian: "harbour vote opposition Praia" });
+
+  it("starts both searches before either answers and keeps query order", async () => {
+    let inFlight = 0;
+    let most = 0;
+    const record = await runRelatedReporting({
+      url: "https://example.com/harbour",
+      topic: harbourTopic,
+      searchStrings: strings,
+      searchPages: async ({ query }) => {
+        inFlight += 1;
+        most = Math.max(most, inFlight);
+        // The first string answers last; its pages must still come first.
+        await new Promise((resolve) => setTimeout(resolve, query.includes("opposition") ? 5 : 30));
+        inFlight -= 1;
+        const slug = query.includes("opposition") ? "against" : "for";
+        return [{ url: `https://news.example/${slug}`, title: `Harbour vote in Praia ${slug}` }];
+      },
+    });
+    expect(most).toBe(2);
+    expect(record.status === "ok" ? record.related_reporting.map((page) => page.url) : []).toEqual([
+      "https://news.example/for",
+      "https://news.example/against",
+    ]);
+  });
+
+  it("fails the rail when either search fails, as before", async () => {
+    const record = await runRelatedReporting({
+      url: "https://example.com/harbour",
+      topic: harbourTopic,
+      searchStrings: strings,
+      searchPages: async ({ query }) => {
+        if (query.includes("opposition")) throw new Error("search timed out");
+        return [{ url: "https://news.example/for", title: "Harbour vote in Praia" }];
+      },
+    });
+    expect(record.status).not.toBe("ok");
+  });
+});

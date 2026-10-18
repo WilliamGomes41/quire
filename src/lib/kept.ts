@@ -98,3 +98,25 @@ export function relatedCollapsed(pages: RelatedPage[], selected: string[]) {
 export function relatedCountLabel(count: number) {
   return count > 0 ? String(count) : "";
 }
+
+/** A Keep still enriching after this long has stopped (restart, cut-off request). */
+export const KEEP_STALE_MS = 3 * 60_000;
+
+export type KeepProgress = "reading" | "understanding" | "related" | "stalled";
+
+/** Where a kept card is while it fills in, or null once the related rail landed. */
+export function keepProgress(clip: Clip, now = Date.now()): KeepProgress | null {
+  if (clip.relatedRail) return null;
+  if (now - Date.parse(clip.savedAt) > KEEP_STALE_MS) return "stalled";
+  if (!clip.sourceHeadline) return "reading";
+  if (!clip.understanding) return "understanding";
+  return "related";
+}
+
+/** True while some card on the desk is still filling in. */
+export function deskEnriching(clips: Clip[], now = Date.now()): boolean {
+  return clips.some((clip) => {
+    const progress = keepProgress(clip, now);
+    return progress !== null && progress !== "stalled";
+  });
+}

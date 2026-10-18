@@ -505,12 +505,10 @@ export async function runRelatedReporting(input: {
   if (!queries.length) {
     return { status: "ok", related_reporting: [] };
   }
-  const raw: { url?: string; title?: string; snippet?: string; date?: string }[] = [];
+  let raw: { url?: string; title?: string; snippet?: string; date?: string }[];
   try {
-    for (const query of queries) {
-      raw.push(...(await input.searchPages({ query })));
-      if (raw.length >= SEARCH_RAW_MAX) break;
-    }
+    // Both strings at once; results stay in query order, so the cap below keeps the same pages.
+    raw = (await Promise.all(queries.map((query) => input.searchPages({ query })))).flat();
   } catch (error) {
     return relatedFail(error);
   }
