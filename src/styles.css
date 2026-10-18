@@ -1245,3 +1245,12 @@ button.toc-row:hover {
     height: min(62vh, 30rem);
   }
 }
+
+.stage-resume {
+  background: transparent;
+  color: color-mix(in srgb, var(--paper) 72%, var(--binding));
+  border: 1px solid color-mix(in srgb, var(--paper) 28%, transparent);
+  padding: 0.35rem 0.7rem;
+  font-size: 0.82rem;
+  letter-spacing: 0.06em;
+}

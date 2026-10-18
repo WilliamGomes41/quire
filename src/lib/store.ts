@@ -64,6 +64,7 @@ export async function clipStore(): Promise<ClipStore> {
     async remove(id) {
       if (!id) return;
       await db.query("delete from clips where id = $1", [id]);
+      await db.query("delete from bookmarks where item_id = $1", [id]);
     },
   };
 }
@@ -135,6 +136,7 @@ export async function issueStore(): Promise<IssueStore> {
     async remove(id) {
       if (!id) return;
       await db.query("delete from issues where id = $1", [id]);
+      await db.query("delete from bookmarks where item_id = $1", [id]);
     },
   };
 }

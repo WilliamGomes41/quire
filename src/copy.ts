@@ -107,6 +107,10 @@ export const printThisIssue = "Print this issue";
 
 export const couldNotPrint = "Could not print this issue.";
 
+export function continueReadingLabel(page: string) {
+  return `Continue at ${page}`;
+}
+
 export function sourceHeadlineCopy(input: { status: "ok" | "empty" | "failed"; message?: string }) {
   if (input.status === "ok") {
     return { kind: "ok" as const, text: "" };

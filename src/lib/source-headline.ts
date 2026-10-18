@@ -11,6 +11,7 @@ import {
   type ArticleGet,
   type ClaimSource,
 } from "./article";
+import { readCappedText, safeFetch } from "./safe-fetch";
 
 export type SourceHeadlineOk = {
   status: "ok";
@@ -199,18 +200,18 @@ async function fetchKeepHtml(input: {
     typeof AbortSignal !== "undefined" && typeof AbortSignal.timeout === "function"
       ? AbortSignal.timeout(timeoutMs)
       : undefined;
-  const get = input.get ?? fetch;
-  const response = await get(input.url, {
+  const init = {
     method: "GET",
     headers: {
       Accept: "text/html,application/xhtml+xml",
     },
     signal,
-  });
+  };
+  const response = input.get ? await input.get(input.url, init) : await safeFetch(input.url, init);
   if (!response.ok) {
     throw new Error(`${couldNotReadHeadline} (${response.status})`);
   }
-  return response.text();
+  return readCappedText(response);
 }
 
 export async function runSourceHeadline(input: {

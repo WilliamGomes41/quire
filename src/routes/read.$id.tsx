@@ -1,7 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { createServerFn } from "@tanstack/react-start";
-import { couldNotFetchWords, couldNotPrint, printThisIssue, productName, stanceCopy } from "../copy";
+import {
+  continueReadingLabel,
+  couldNotFetchWords,
+  couldNotPrint,
+  printThisIssue,
+  productName,
+  stanceCopy,
+} from "../copy";
 import { issueFromKeptWords } from "../lib/bind";
 import { fetchArticleWords } from "../lib/article";
 import type { BodyBlock } from "../lib/article";
@@ -19,6 +26,8 @@ import { qrMatrix } from "../lib/qr";
 import { composeBoundPrint } from "../lib/print-bound";
 import { offerPrint, paperNameFor } from "../lib/print";
 import { clipStore, issueStore } from "../lib/store";
+import { bookmarkStore } from "../lib/bookmark";
+import { blockMatches, blockStart, resumeSheet, type SavedPlace } from "../lib/place";
 import { QuireMark } from "../mark";
 
 const TURN_MS = 280;
@@ -28,12 +37,16 @@ const loadIssue = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const issues = await issueStore();
     const bound = await issues.get(data.id);
-    if (bound) return { bound: true as const, issue: bound };
+    if (bound) return { bound: true as const, issue: bound, bookmark: await readBookmark(data.id) };
     const clip = await (await clipStore()).get(data.id);
     if (!clip) return { bound: false as const, issue: null };
     try {
       const words = await fetchArticleWords(clip.url);
-      return { bound: false as const, issue: issueFromKeptWords(clip, words) };
+      return {
+        bound: false as const,
+        issue: issueFromKeptWords(clip, words),
+        bookmark: await readBookmark(data.id),
+      };
     } catch (error) {
       return {
         bound: false as const,
@@ -42,6 +55,38 @@ const loadIssue = createServerFn({ method: "GET" })
       };
     }
   });
+
+/** How long scrolling must rest before the paragraph at the top is saved. */
+const SETTLE_MS = 1200;
+
+/** Where this reader last stopped, or null. A missing bookmark never stops reading. */
+async function readBookmark(id: string): Promise<SavedPlace | null> {
+  try {
+    const { currentReaderId } = await import("../lib/reader");
+    const bookmark = await (await bookmarkStore()).get(await currentReaderId(), id);
+    return bookmark ? { sheet: bookmark.sheet, block: bookmark.block, start: bookmark.start } : null;
+  } catch {
+    return null;
+  }
+}
+
+const saveBookmark = createServerFn({ method: "POST" })
+  .validator((data: { id: string } & SavedPlace) => data)
+  .handler(async ({ data }) => {
+    const { currentReaderId } = await import("../lib/reader");
+    const { id, ...place } = data;
+    await (await bookmarkStore()).set(await currentReaderId(), id, place);
+  });
+
+/** The first paragraph still on screen below the top edge, with its opening words. */
+function topBlock(): { block: number; start: string } | null {
+  for (const element of document.querySelectorAll<HTMLElement>(".sheet-piece [data-block]")) {
+    if (element.getBoundingClientRect().bottom > 0) {
+      return { block: Number(element.dataset.block), start: blockStart(element.textContent ?? "") };
+    }
+  }
+  return null;
+}
 
 export const Route = createFileRoute("/read/$id")({
   loader: ({ params }) => loadIssue({ data: { id: params.id } }),
@@ -56,13 +101,55 @@ function ReadIssue() {
   const [turning, setTurning] = useState(false);
   const [printing, setPrinting] = useState(false);
   const [printError, setPrintError] = useState("");
+  const [bookmark, setBookmark] = useState<SavedPlace | null>(payload?.bookmark ?? null);
   const timer = useRef<number | null>(null);
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
+  const pendingBlock = useRef<SavedPlace | null>(null);
+  const itemId = issue?.id ?? "";
+
+  function queueSave(place: SavedPlace) {
+    setBookmark(place);
+    // One save at a time, so quick turns land in order.
+    saving.current = saving.current.then(() =>
+      saveBookmark({ data: { id: itemId, ...place } }).catch(() => undefined),
+    );
+  }
 
   useEffect(() => {
     return () => {
       if (timer.current !== null) window.clearTimeout(timer.current);
     };
   }, []);
+
+  // On a piece, remember the paragraph at the top of the screen once scrolling settles.
+  useEffect(() => {
+    if (!itemId || turning) return;
+    let settle: number | null = null;
+    function onScroll() {
+      if (settle !== null) window.clearTimeout(settle);
+      settle = window.setTimeout(() => {
+        const top = topBlock();
+        if (top) queueSave({ sheet: index, block: top.block, start: top.start });
+      }, SETTLE_MS);
+    }
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (settle !== null) window.clearTimeout(settle);
+    };
+  }, [itemId, index, turning]);
+
+  // After Continue lands on its sheet, scroll back to the saved paragraph if the words still match.
+  useEffect(() => {
+    const place = pendingBlock.current;
+    if (!place || turning || place.sheet !== index) return;
+    pendingBlock.current = null;
+    if (place.block === null) return;
+    const target = document.querySelector<HTMLElement>(`[data-block="${place.block}"]`);
+    if (target && blockMatches(target.textContent ?? "", place.start)) {
+      target.scrollIntoView({ block: "start" });
+    }
+  }, [index, turning]);
 
   if (!issue) {
     return (
@@ -92,9 +179,23 @@ function ReadIssue() {
     .filter(Boolean)
     .join(" ");
 
+  const resumeAt = index === 0 ? resumeSheet(bookmark, sheets.length) : null;
+
   function goTo(target: number) {
     const next = clampSheetIndex(target, sheets.length);
     if (next === index || turning) return;
+    queueSave({ sheet: next, block: null, start: null });
+    turnTo(next);
+  }
+
+  /** Continue: go back to the saved sheet and paragraph without moving the bookmark. */
+  function resume(place: SavedPlace) {
+    if (turning) return;
+    pendingBlock.current = place;
+    turnTo(clampSheetIndex(place.sheet, sheets.length));
+  }
+
+  function turnTo(next: number) {
     const quiet =
       typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (quiet) {
@@ -159,6 +260,18 @@ function ReadIssue() {
               Next
             </button>
           </div>
+          {resumeAt !== null ? (
+            <button
+              type="button"
+              className="stage-resume"
+              disabled={turning}
+              onClick={() => bookmark && resume(bookmark)}
+            >
+              {continueReadingLabel(
+                `${String(resumeAt + 1).padStart(2, "0")} / ${String(sheets.length).padStart(2, "0")}`,
+              )}
+            </button>
+          ) : null}
           {bound ? (
             <button type="button" className="stage-print" disabled={printing} onClick={printBound}>
               {printThisIssue}
@@ -287,6 +400,7 @@ function PieceSheet({ sheet }: { sheet: SequenceSheet }) {
           ) : (
             <p
               key={`${sheet.folio}-${index}`}
+              data-block={index}
               className={!screening && index === firstLong ? "drop" : undefined}
             >
               {block.text}
